@@ -1,0 +1,108 @@
+#!/bin/sh
+
+# Minimal terminal prompt with delta rendering
+# Usage: ./prompt "Option 1" "Option 2" "Option 3"
+
+# Save cursor position and hide cursor
+printf '\033[s\033[?25l'
+
+# Cleanup on exit
+cleanup() {
+    printf '\033[u\033[?25h'
+    stty echo
+    exit "${1:-0}"
+}
+trap 'cleanup 1' INT TERM
+
+# Store options
+i=1
+for arg in "$@"; do
+    eval "opt_$i=\"\$arg\""
+    i=$((i + 1))
+done
+count=$((i - 1))
+[ "$count" -eq 0 ] && cleanup 1
+
+# Initial render
+selected=1
+i=1
+while [ "$i" -le "$count" ]; do
+    eval "opt=\$opt_$i"
+    if [ "$i" -eq "$selected" ]; then
+        printf '\033[7m> %s\033[0m\n' "$opt"
+    else
+        printf '  %s\n' "$opt"
+    fi
+    i=$((i + 1))
+done
+# Move cursor back up to after last line (it's currently one past)
+printf '\033[1A'
+
+# Delta update: only redraw two lines
+update() {
+    old="$1"
+    new="$2"
+
+    # Cursor is currently on the last line
+    # Move up from last line to old line
+    dist_from_last_to_old=$((count - old))
+    printf '\033[%dA' "$dist_from_last_to_old"
+
+    # Clear and redraw old line (unselected)
+    printf '\r\033[K  '
+    eval "opt=\$opt_$old"
+    printf '%s' "$opt"
+
+    # Move from old to new
+    if [ "$new" -gt "$old" ]; then
+        printf '\033[%dB' $((new - old))
+    else
+        printf '\033[%dA' $((old - new))
+    fi
+
+    # Clear and redraw new line (selected)
+    printf '\r\033[K\033[7m> '
+    eval "opt=\$opt_$new"
+    printf '%s\033[0m' "$opt"
+
+    # Move back to last line
+    dist_from_new_to_last=$((count - new))
+    printf '\033[%dB' "$dist_from_new_to_last"
+}
+
+# Input loop
+stty -echo -icanon
+while true; do
+    # Read single char
+    char=$(dd bs=1 count=1 2>/dev/null)
+
+    # Handle escape sequences
+    if [ "$char" = "$(printf '\033')" ]; then
+        dd bs=1 count=1 2>/dev/null | read -r _ 2>/dev/null
+        char=$(dd bs=1 count=1 2>/dev/null)
+
+        case "$char" in
+            A) # Up arrow
+                [ "$selected" -gt 1 ] && {
+                    old="$selected"
+                    selected=$((selected - 1))
+                    update "$old" "$selected"
+                }
+                ;;
+            B) # Down arrow
+                [ "$selected" -lt "$count" ] && {
+                    old="$selected"
+                    selected=$((selected + 1))
+                    update "$old" "$selected"
+                }
+                ;;
+        esac
+    elif [ "$char" = "$(printf '\n')" ] || [ "$char" = "$(printf '\r')" ]; then
+        # Enter pressed
+        eval "result=\$opt_$selected"
+        printf '\033[?25h\n'
+        stty echo
+        printf '%s\n' "$result"
+        exit 0
+    fi
+done
