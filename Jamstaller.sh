@@ -1,21 +1,27 @@
 #!/bin/sh
 
-# TUI Prompt Function
-# Usage: prompt_tui "Title" "Option 1" "Option 2" "Option 3"
-prompt_tui() {
+# TUI Installer Function
+# Usage: installer_tui "Title" "Stage 1" "Stage 2" "Stage 3"
+installer_tui() {
     # Parse arguments
     [ "$#" -lt 2 ] && return 1
     title="$1"
     shift
 
-    # Store options
+    # Store stages
     i=1
     for arg in "$@"; do
-        eval "opt_$i=\"\$arg\""
+        eval "stage_$i=\"\$arg\""
+        eval "state_$i=0"  # 0=incomplete, 1=complete
         i=$((i + 1))
     done
-    count=$((i - 1))
-    [ "$count" -eq 0 ] && return 1
+    stage_count=$((i - 1))
+    [ "$stage_count" -eq 0 ] && return 1
+
+    # Add buttons
+    button_cancel="Cancel"
+    button_install="Install"
+    total_count=$((stage_count + 2))  # stages + 2 buttons
 
     # Get terminal dimensions
     if command -v tput >/dev/null 2>&1; then
@@ -34,12 +40,17 @@ prompt_tui() {
     border_width=2
     max_opt_len=0
     i=1
-    while [ "$i" -le "$count" ]; do
-        eval "opt=\$opt_$i"
-        opt_len=${#opt}
+    while [ "$i" -le "$stage_count" ]; do
+        eval "stage=\$stage_$i"
+        # Account for state prefix "[*] " or "[] "
+        opt_len=$((${#stage} + 4))
         [ "$opt_len" -gt "$max_opt_len" ] && max_opt_len=$opt_len
         i=$((i + 1))
     done
+
+    # Check button lengths
+    button_len=$((${#button_cancel} + ${#button_install} + 6))
+    [ "$button_len" -gt "$max_opt_len" ] && max_opt_len=$button_len
 
     # Calculate box dimensions
     title_len=${#title}
@@ -47,7 +58,7 @@ prompt_tui() {
     [ "$title_len" -gt "$content_width" ] && content_width=$title_len
     box_inner_width=$((content_width + 4 + padding * 2))
     box_width=$((box_inner_width + border_width))
-    box_inner_height=$((3 + count + padding * 2))
+    box_inner_height=$((4 + stage_count + 2 + padding * 2))  # title + stages + spacer + buttons
     box_height=$((box_inner_height + border_width))
 
     # Calculate centering position
@@ -89,17 +100,79 @@ prompt_tui() {
         printf '\033[%d;%dH\033[1m%s\033[0m' "$title_row" "$title_start" "$title"
     }
 
-    # Draw option at index
-    draw_option() {
+    # Get state indicator
+    get_state_indicator() {
+        state="$1"
+        case "$state" in
+            0) printf '[]' ;;      # incomplete
+            1) printf '\033[32m[*]\033[0m' ;;     # complete (green)
+        esac
+    }
+
+    # Draw stage at index
+    draw_stage() {
         idx="$1"
         is_selected="$2"
 
-        option_row=$((start_row + padding + 3 + idx))
-        option_col=$((start_col + padding + 2))
+        stage_row=$((start_row + padding + 3 + idx))
+        stage_col=$((start_col + padding + 2))
 
-        eval "opt=\$opt_$idx"
+        eval "stage=\$stage_$idx"
+        eval "state=\$state_$idx"
 
-        printf '\033[%d;%dH' "$option_row" "$option_col"
+        printf '\033[%d;%dH' "$stage_row" "$stage_col"
+
+        if [ "$is_selected" = "1" ]; then
+            # Highlight full row
+            printf '\033[7m'
+            printf '> '
+            if [ "$state" -eq 1 ]; then
+                printf '\033[27m\033[32m[*]\033[0m\033[7m'
+            else
+                printf '[]'
+            fi
+            printf ' %s' "$stage"
+            # Pad to content_width
+            text_len=$((4 + ${#stage}))
+            j=$text_len
+            while [ "$j" -lt "$content_width" ]; do
+                printf ' '
+                j=$((j + 1))
+            done
+            printf '\033[0m'
+        else
+            # Draw without highlight and pad to full width
+            printf '  '
+            if [ "$state" -eq 1 ]; then
+                printf '\033[32m[*]\033[0m'
+            else
+                printf '[]'
+            fi
+            printf ' %s' "$stage"
+            # Pad to content_width to clear any remaining highlight
+            text_len=$((4 + ${#stage}))
+            j=$text_len
+            while [ "$j" -lt "$content_width" ]; do
+                printf ' '
+                j=$((j + 1))
+            done
+        fi
+    }
+
+    # Draw buttons
+    draw_buttons() {
+        is_cancel_selected="$1"
+        is_install_selected="$2"
+
+        # Spacer line
+        spacer_row=$((start_row + padding + 4 + stage_count))
+
+        # Button row
+        button_row=$((spacer_row + 1))
+        button_col=$((start_col + padding + 2))
+
+        # Clear button area
+        printf '\033[%d;%dH' "$button_row" "$button_col"
         spaces_needed=$((content_width + 4))
         j=0
         while [ "$j" -lt "$spaces_needed" ]; do
@@ -107,11 +180,29 @@ prompt_tui() {
             j=$((j + 1))
         done
 
-        printf '\033[%d;%dH' "$option_row" "$option_col"
-        if [ "$is_selected" = "1" ]; then
-            printf '\033[7m> %s\033[0m' "$opt"
+        # Draw buttons centered with fixed width
+        cancel_len=${#button_cancel}
+        install_len=${#button_install}
+        gap=3
+        total_button_width=$((cancel_len + gap + install_len))
+        button_start=$((button_col + (content_width + 4 - total_button_width) / 2))
+
+        # Draw Cancel button
+        printf '\033[%d;%dH' "$button_row" "$button_start"
+        if [ "$is_cancel_selected" = "1" ]; then
+            printf '\033[7m%s\033[0m' "$button_cancel"
         else
-            printf '  %s' "$opt"
+            printf '%s' "$button_cancel"
+        fi
+
+        # Draw gap
+        printf '   '
+
+        # Draw Install button
+        if [ "$is_install_selected" = "1" ]; then
+            printf '\033[7m%s\033[0m' "$button_install"
+        else
+            printf '%s' "$button_install"
         fi
     }
 
@@ -132,18 +223,34 @@ prompt_tui() {
 
     selected=1
     i=1
-    while [ "$i" -le "$count" ]; do
-        draw_option "$i" 0
+    while [ "$i" -le "$stage_count" ]; do
+        draw_stage "$i" 0
         i=$((i + 1))
     done
-    draw_option "$selected" 1
+    draw_stage "$selected" 1
+    draw_buttons 0 0
 
     # Update selection
     update() {
         old="$1"
         new="$2"
-        draw_option "$old" 0
-        draw_option "$new" 1
+
+        # Determine if old/new are stages or buttons
+        if [ "$old" -le "$stage_count" ]; then
+            draw_stage "$old" 0
+        elif [ "$old" -eq $((stage_count + 1)) ]; then
+            draw_buttons 0 0
+        elif [ "$old" -eq $((stage_count + 2)) ]; then
+            draw_buttons 0 0
+        fi
+
+        if [ "$new" -le "$stage_count" ]; then
+            draw_stage "$new" 1
+        elif [ "$new" -eq $((stage_count + 1)) ]; then
+            draw_buttons 1 0
+        elif [ "$new" -eq $((stage_count + 2)) ]; then
+            draw_buttons 0 1
+        fi
     }
 
     # Input loop
@@ -164,19 +271,46 @@ prompt_tui() {
                     }
                     ;;
                 B) # Down arrow
-                    [ "$selected" -lt "$count" ] && {
+                    [ "$selected" -lt "$total_count" ] && {
                         old="$selected"
                         selected=$((selected + 1))
                         update "$old" "$selected"
                     }
                     ;;
+                C) # Right arrow (navigate between buttons)
+                    if [ "$selected" -eq $((stage_count + 1)) ]; then
+                        old="$selected"
+                        selected=$((stage_count + 2))
+                        update "$old" "$selected"
+                    fi
+                    ;;
+                D) # Left arrow (navigate between buttons)
+                    if [ "$selected" -eq $((stage_count + 2)) ]; then
+                        old="$selected"
+                        selected=$((stage_count + 1))
+                        update "$old" "$selected"
+                    fi
+                    ;;
             esac
         elif [ "$char" = "$(printf '\n')" ] || [ "$char" = "$(printf '\r')" ]; then
-            eval "result=\$opt_$selected"
-            printf '\033[?25h\033[?1049l'
-            stty echo
-            printf '%s\n' "$result"
-            return 0
+            # Handle button press
+            if [ "$selected" -eq $((stage_count + 1)) ]; then
+                # Cancel button
+                printf '\033[?25h\033[?1049l'
+                stty echo
+                return 1
+            elif [ "$selected" -eq $((stage_count + 2)) ]; then
+                # Install button
+                printf '\033[?25h\033[?1049l'
+                stty echo
+                return 0
+            else
+                # Toggle stage state on Enter (for testing)
+                eval "current_state=\$state_$selected"
+                new_state=$(((current_state + 1) % 2))
+                eval "state_$selected=$new_state"
+                draw_stage "$selected" 1
+            fi
         fi
     done
 }
@@ -201,12 +335,15 @@ echo -e "
 \e]PFffffff
 " && clear
 
-green="$(printf '\033[32m')"
-gray="$(printf '\033[90m')"
-reset="$(printf '\033[0m')"
+installer_tui "Jamstaller" \
+  "Install Location" \
+  "System Setup" \
+  "User Setup" \
+  "Network Setup"
 
-prompt_tui "Jamstaller" \
-  "${green}[*]${reset} Install Location" \
-  "[] System Setup" \
-  "[] User Setup" \
-  "[] Network Setup"
+# Handle result
+if [ $? -eq 0 ]; then
+    echo "Installation started!"
+else
+    echo "Installation cancelled."
+fi
