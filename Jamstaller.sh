@@ -67,30 +67,49 @@ installer_tui() {
     [ "$start_row" -lt 1 ] && start_row=1
     [ "$start_col" -lt 1 ] && start_col=1
 
-    # Draw border characters
-    draw_box() {
-        printf '\033[%d;%dH┌' "$start_row" "$start_col"
-        i=1
-        while [ "$i" -le "$box_inner_width" ]; do
-            printf '─'
-            i=$((i + 1))
+    # Helper: repeat a character N times
+    repeat_char() {
+        char="$1"
+        count="$2"
+        [ "$count" -lt 1 ] && return
+        _repeat_i=1
+        while [ "$_repeat_i" -le "$count" ]; do
+            printf '%s' "$char"
+            _repeat_i=$((_repeat_i + 1))
         done
+    }
+
+    # Helper: draw a box at given position
+    draw_box_at() {
+        box_row="$1"
+        box_col="$2"
+        inner_width="$3"
+        inner_height="$4"
+        fill_inside="${5:-0}"  # Optional: fill inside with spaces
+
+        # Top border
+        printf '\033[%d;%dH┌' "$box_row" "$box_col"
+        repeat_char '─' "$inner_width"
         printf '┐'
 
-        i=1
-        while [ "$i" -le "$box_inner_height" ]; do
-            printf '\033[%d;%dH│' $((start_row + i)) "$start_col"
-            printf '\033[%d;%dH│' $((start_row + i)) $((start_col + box_inner_width + 1))
-            i=$((i + 1))
+        # Sides
+        _box_i=1
+        while [ "$_box_i" -le "$inner_height" ]; do
+            printf '\033[%d;%dH│' $((box_row + _box_i)) "$box_col"
+            [ "$fill_inside" -eq 1 ] && repeat_char ' ' "$inner_width"
+            printf '\033[%d;%dH│' $((box_row + _box_i)) $((box_col + inner_width + 1))
+            _box_i=$((_box_i + 1))
         done
 
-        printf '\033[%d;%dH└' $((start_row + box_inner_height + 1)) "$start_col"
-        i=1
-        while [ "$i" -le "$box_inner_width" ]; do
-            printf '─'
-            i=$((i + 1))
-        done
+        # Bottom border
+        printf '\033[%d;%dH└' $((box_row + inner_height + 1)) "$box_col"
+        repeat_char '─' "$inner_width"
         printf '┘'
+    }
+
+    # Draw main border
+    draw_box() {
+        draw_box_at "$start_row" "$start_col" "$box_inner_width" "$box_inner_height" 0
     }
 
     # Draw title
@@ -138,11 +157,7 @@ installer_tui() {
             # Pad to content_width
             text_len=$((6 + ${#stage}))
             remaining=$((content_width - text_len))
-            j=0
-            while [ "$j" -lt "$remaining" ]; do
-                printf ' '
-                j=$((j + 1))
-            done
+            repeat_char ' ' "$remaining"
             printf '\033[0m'
         else
             # Draw without highlight - clear the entire line content with extra spaces
@@ -156,11 +171,7 @@ installer_tui() {
             # Pad to content_width + extra to clear any remaining highlight
             text_len=$((6 + ${#stage}))
             remaining=$((content_width - text_len + 2))
-            j=0
-            while [ "$j" -lt "$remaining" ]; do
-                printf ' '
-                j=$((j + 1))
-            done
+            repeat_char ' ' "$remaining"
         fi
     }
 
@@ -179,11 +190,7 @@ installer_tui() {
         # Clear button area
         printf '\033[%d;%dH' "$button_row" "$button_col"
         spaces_needed=$((content_width + 4))
-        j=0
-        while [ "$j" -lt "$spaces_needed" ]; do
-            printf ' '
-            j=$((j + 1))
-        done
+        repeat_char ' ' "$spaces_needed"
 
         # Draw buttons centered with fixed width
         cancel_len=${#button_cancel}
@@ -241,33 +248,7 @@ installer_tui() {
         [ "$dialog_start_col" -lt 1 ] && dialog_start_col=1
 
         # Draw dialog box
-        printf '\033[%d;%dH┌' "$dialog_start_row" "$dialog_start_col"
-        i=1
-        while [ "$i" -le "$dialog_inner_width" ]; do
-            printf '─'
-            i=$((i + 1))
-        done
-        printf '┐'
-
-        i=1
-        while [ "$i" -le "$dialog_inner_height" ]; do
-            printf '\033[%d;%dH│' $((dialog_start_row + i)) "$dialog_start_col"
-            j=1
-            while [ "$j" -le "$dialog_inner_width" ]; do
-                printf ' '
-                j=$((j + 1))
-            done
-            printf '\033[%d;%dH│' $((dialog_start_row + i)) $((dialog_start_col + dialog_inner_width + 1))
-            i=$((i + 1))
-        done
-
-        printf '\033[%d;%dH└' $((dialog_start_row + dialog_inner_height + 1)) "$dialog_start_col"
-        i=1
-        while [ "$i" -le "$dialog_inner_width" ]; do
-            printf '─'
-            i=$((i + 1))
-        done
-        printf '┘'
+        draw_box_at "$dialog_start_row" "$dialog_start_col" "$dialog_inner_width" "$dialog_inner_height" 1
 
         # Draw message
         msg_row=$((dialog_start_row + padding + 1))
@@ -282,35 +263,42 @@ installer_tui() {
         total_btn_width=$((yes_len + gap + no_len))
         btn_start=$((dialog_start_col + (dialog_inner_width - total_btn_width) / 2 + 1))
 
-        # Draw confirmation buttons
-        draw_confirm_buttons() {
-            is_yes_selected="$1"
+        # Helper: draw two buttons side-by-side
+        draw_two_buttons() {
+            row="$1"
+            col="$2"
+            btn1_text="$3"
+            btn2_text="$4"
+            btn1_selected="$5"
+            total_width="$6"
 
             # Clear button area
-            printf '\033[%d;%dH' "$confirm_button_row" "$btn_start"
-            j=0
-            while [ "$j" -lt "$total_btn_width" ]; do
-                printf ' '
-                j=$((j + 1))
-            done
+            printf '\033[%d;%dH' "$row" "$col"
+            repeat_char ' ' "$total_width"
 
-            # Draw Yes button
-            printf '\033[%d;%dH' "$confirm_button_row" "$btn_start"
-            if [ "$is_yes_selected" = "1" ]; then
-                printf '\033[7m%s\033[0m' "$button_yes"
+            # Draw first button
+            printf '\033[%d;%dH' "$row" "$col"
+            if [ "$btn1_selected" = "1" ]; then
+                printf '\033[7m%s\033[0m' "$btn1_text"
             else
-                printf '%s' "$button_yes"
+                printf '%s' "$btn1_text"
             fi
 
             # Draw gap
             printf '   '
 
-            # Draw No button
-            if [ "$is_yes_selected" = "0" ]; then
-                printf '\033[7m%s\033[0m' "$button_no"
+            # Draw second button
+            if [ "$btn1_selected" = "0" ]; then
+                printf '\033[7m%s\033[0m' "$btn2_text"
             else
-                printf '%s' "$button_no"
+                printf '%s' "$btn2_text"
             fi
+        }
+
+        # Draw confirmation buttons
+        draw_confirm_buttons() {
+            is_yes_selected="$1"
+            draw_two_buttons "$confirm_button_row" "$btn_start" "$button_yes" "$button_no" "$is_yes_selected" "$total_btn_width"
         }
 
         # Initial state: No is selected (safer default)
@@ -362,16 +350,23 @@ installer_tui() {
     }
     trap 'cleanup 1' INT TERM
 
-    # Initial render
-    draw_box
-    draw_title
+    # Helper: redraw entire main UI
+    redraw_main_ui() {
+        printf '\033[H\033[2J'
+        draw_box
+        draw_title
+        i=1
+        while [ "$i" -le "$stage_count" ]; do
+            draw_stage "$i" 0
+            i=$((i + 1))
+        done
+        # Force output flush
+        printf ''
+    }
 
+    # Initial render
     selected=1
-    i=1
-    while [ "$i" -le "$stage_count" ]; do
-        draw_stage "$i" 0
-        i=$((i + 1))
-    done
+    redraw_main_ui
     draw_stage "$selected" 1
     draw_buttons 0 0
 
@@ -444,21 +439,13 @@ installer_tui() {
                 show_confirmation "cancel"
                 confirm_result=$?
 
-                # Clear screen and redraw main UI
-                printf '\033[H\033[2J'
-                draw_box
-                draw_title
-                i=1
-                while [ "$i" -le "$stage_count" ]; do
-                    draw_stage "$i" 0
-                    i=$((i + 1))
-                done
+                # Redraw main UI
+                redraw_main_ui
                 draw_buttons 1 0
 
                 # If confirmed (Yes selected = return 1), exit
                 if [ "$confirm_result" -eq 1 ]; then
-                    printf '\033[?25h\033[?1049l'
-                    stty echo
+                    cleanup 1
                     return 1
                 fi
             elif [ "$selected" -eq $((stage_count + 2)) ]; then
@@ -466,22 +453,14 @@ installer_tui() {
                 show_confirmation "install"
                 confirm_result=$?
 
-                # Clear screen and redraw main UI
-                printf '\033[H\033[2J'
-                draw_box
-                draw_title
-                i=1
-                while [ "$i" -le "$stage_count" ]; do
-                    draw_stage "$i" 0
-                    i=$((i + 1))
-                done
+                # Redraw main UI
+                redraw_main_ui
                 draw_stage "$selected" 1
                 draw_buttons 0 1
 
                 # If confirmed (Yes selected = return 1), exit
                 if [ "$confirm_result" -eq 1 ]; then
-                    printf '\033[?25h\033[?1049l'
-                    stty echo
+                    cleanup 0
                     return 0
                 fi
             else
