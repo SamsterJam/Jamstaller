@@ -53,12 +53,12 @@ installer_tui() {
     [ "$button_len" -gt "$max_opt_len" ] && max_opt_len=$button_len
 
     # Calculate box dimensions
-    title_len=${#title}
+    ascii_art_width=52  # Width of the ASCII art
     content_width=$max_opt_len
-    [ "$title_len" -gt "$content_width" ] && content_width=$title_len
+    [ "$ascii_art_width" -gt "$content_width" ] && content_width=$ascii_art_width
     box_inner_width=$((content_width + 4 + padding * 2))
     box_width=$((box_inner_width + border_width))
-    box_inner_height=$((4 + stage_count + 2 + padding * 2))  # title + stages + spacer + buttons
+    box_inner_height=$((8 + stage_count + 2 + padding * 2))  # ASCII art (6 lines) + 1 spacer + 1 extra + stages + spacer + buttons
     box_height=$((box_inner_height + border_width))
 
     # Calculate centering position
@@ -114,9 +114,38 @@ installer_tui() {
 
     # Draw title
     draw_title() {
-        title_row=$((start_row + padding + 1))
-        title_start=$((start_col + (box_inner_width - title_len) / 2 + 1))
-        printf '\033[%d;%dH\033[1m%s\033[0m' "$title_row" "$title_start" "$title"
+        # ASCII art logo - drawn line by line
+        ascii_line1="   ___                     _        _ _           "
+        ascii_line2="  |_  |                   | |      | | |          "
+        ascii_line3="    | | __ _ _ __ ___  ___| |_ __ _| | | ___ _ __ "
+        ascii_line4="    | |/ _\` | '_ \` _ \/ __| __/ _\` | | |/ _ \ '__|"
+        ascii_line5="/\__/ / (_| | | | | | \__ \ || (_| | | |  __/ |   "
+        ascii_line6="\____/ \__,_|_| |_| |_|___/\__\__,_|_|_|\___|_|   "
+
+        # Draw each line centered
+        ascii_row=$((start_row + padding + 1))
+        ascii_start=$((start_col + (box_inner_width - ${#ascii_line1}) / 2 + 1))
+        printf '\033[%d;%dH\033[1m%s\033[0m' "$ascii_row" "$ascii_start" "$ascii_line1"
+
+        ascii_row=$((ascii_row + 1))
+        ascii_start=$((start_col + (box_inner_width - ${#ascii_line2}) / 2 + 1))
+        printf '\033[%d;%dH\033[1m%s\033[0m' "$ascii_row" "$ascii_start" "$ascii_line2"
+
+        ascii_row=$((ascii_row + 1))
+        ascii_start=$((start_col + (box_inner_width - ${#ascii_line3}) / 2 + 1))
+        printf '\033[%d;%dH\033[1m%s\033[0m' "$ascii_row" "$ascii_start" "$ascii_line3"
+
+        ascii_row=$((ascii_row + 1))
+        ascii_start=$((start_col + (box_inner_width - ${#ascii_line4}) / 2 + 1))
+        printf '\033[%d;%dH\033[1m%s\033[0m' "$ascii_row" "$ascii_start" "$ascii_line4"
+
+        ascii_row=$((ascii_row + 1))
+        ascii_start=$((start_col + (box_inner_width - ${#ascii_line5}) / 2 + 1))
+        printf '\033[%d;%dH\033[1m%s\033[0m' "$ascii_row" "$ascii_start" "$ascii_line5"
+
+        ascii_row=$((ascii_row + 1))
+        ascii_start=$((start_col + (box_inner_width - ${#ascii_line6}) / 2 + 1))
+        printf '\033[%d;%dH\033[1m%s\033[0m' "$ascii_row" "$ascii_start" "$ascii_line6"
     }
 
     # Get state indicator
@@ -133,7 +162,7 @@ installer_tui() {
         idx="$1"
         is_selected="$2"
 
-        stage_row=$((start_row + padding + 3 + idx))
+        stage_row=$((start_row + padding + 8 + idx))  # ASCII art (6 lines) + 1 spacer + 1 extra
         stage_col=$((start_col + padding + 2))
 
         eval "stage=\$stage_$idx"
@@ -181,7 +210,7 @@ installer_tui() {
         is_install_selected="$2"
 
         # Spacer line
-        spacer_row=$((start_row + padding + 4 + stage_count))
+        spacer_row=$((start_row + padding + 9 + stage_count))  # ASCII art (6 lines) + 1 spacer + 1 extra + stages
 
         # Button row
         button_row=$((spacer_row + 1))
@@ -495,10 +524,10 @@ echo -e "
 " && clear
 
 installer_tui "Jamstaller" \
+  "Network Setup" \
   "Install Location" \
   "System Setup" \
-  "User Setup" \
-  "Network Setup"
+  "User Setup" 
 
 # Handle result
 if [ $? -eq 0 ]; then
