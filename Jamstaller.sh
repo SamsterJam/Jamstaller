@@ -375,9 +375,48 @@ installer_tui() {
     cleanup() {
         printf '\033[?25h\033[?1049l'
         stty echo
+        clear
         return "${1:-0}"
     }
-    trap 'cleanup 1' INT TERM
+
+    # Ctrl+C handler
+    ctrl_c_count=0
+    handle_sigint() {
+        ctrl_c_count=$((ctrl_c_count + 1))
+
+        if [ "$ctrl_c_count" -eq 1 ]; then
+            # First Ctrl+C - show confirmation
+            show_confirmation "cancel"
+            confirm_result=$?
+
+            # Redraw main UI
+            redraw_main_ui
+            if [ "$selected" -le "$stage_count" ]; then
+                draw_stage "$selected" 1
+                draw_buttons 0 0
+            elif [ "$selected" -eq $((stage_count + 1)) ]; then
+                draw_buttons 1 0
+            else
+                draw_buttons 0 1
+            fi
+
+            # If confirmed (Yes selected = return 1), exit
+            if [ "$confirm_result" -eq 1 ]; then
+                cleanup 1
+                exit 1
+            fi
+
+            # Reset counter if they chose No
+            ctrl_c_count=0
+        else
+            # Second Ctrl+C - immediate exit
+            cleanup 1
+            exit 1
+        fi
+    }
+
+    trap 'handle_sigint' INT
+    trap 'cleanup 1' TERM
 
     # Helper: redraw entire main UI
     redraw_main_ui() {
