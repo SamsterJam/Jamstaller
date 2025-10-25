@@ -588,6 +588,32 @@ installer_tui() {
                         draw_stage "$selected" 1
                         draw_buttons 0 0
                         ;;
+                    "System Setup")
+                        # Temporarily disable main script's signal handler
+                        trap - INT
+
+                        # Run system setup module
+                        ./system_setup.sh
+                        system_result=$?
+
+                        # Re-enable main script's signal handler and reset counter
+                        trap 'handle_sigint' INT
+                        ctrl_c_count=0
+
+                        # Update state based on result
+                        if [ "$system_result" -eq 1 ]; then
+                            eval "state_$selected=1"
+                        else
+                            eval "state_$selected=0"
+                        fi
+
+                        # Restore terminal state and redraw main UI
+                        printf '\033[?1049h\033[H\033[2J\033[?25l'
+                        stty -echo -icanon
+                        redraw_main_ui
+                        draw_stage "$selected" 1
+                        draw_buttons 0 0
+                        ;;
                     *)
                         # Toggle stage state on Enter (for other stages)
                         eval "current_state=\$state_$selected"
