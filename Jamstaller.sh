@@ -532,11 +532,44 @@ installer_tui() {
                     return 0
                 fi
             else
-                # Toggle stage state on Enter (for testing)
-                eval "current_state=\$state_$selected"
-                new_state=$(((current_state + 1) % 2))
-                eval "state_$selected=$new_state"
-                draw_stage "$selected" 1
+                # Launch stage module
+                eval "stage_name=\$stage_$selected"
+
+                case "$stage_name" in
+                    "Network Setup")
+                        # Temporarily disable main script's signal handler
+                        trap - INT
+
+                        # Run network setup module
+                        ./network_setup.sh
+                        network_result=$?
+
+                        # Re-enable main script's signal handler and reset counter
+                        trap 'handle_sigint' INT
+                        ctrl_c_count=0
+
+                        # Update state based on result
+                        if [ "$network_result" -eq 1 ]; then
+                            eval "state_$selected=1"
+                        else
+                            eval "state_$selected=0"
+                        fi
+
+                        # Restore terminal state and redraw main UI
+                        printf '\033[?1049h\033[H\033[2J\033[?25l'
+                        stty -echo -icanon
+                        redraw_main_ui
+                        draw_stage "$selected" 1
+                        draw_buttons 0 0
+                        ;;
+                    *)
+                        # Toggle stage state on Enter (for other stages)
+                        eval "current_state=\$state_$selected"
+                        new_state=$(((current_state + 1) % 2))
+                        eval "state_$selected=$new_state"
+                        draw_stage "$selected" 1
+                        ;;
+                esac
             fi
         fi
     done
