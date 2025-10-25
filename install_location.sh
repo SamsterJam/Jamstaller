@@ -773,13 +773,13 @@ EOF
             printf '\033[%d;%dH%s' $((summary_row + 1)) "$col" "Mode: Full disk installation"
 
             warn_row=$((summary_row + 3))
-            printf '\033[%d;%dH\033[33m%s\033[0m' "$warn_row" "$col" "WARNING: All data on /dev/$device will be erased!"
+            printf '\033[%d;%dH\033[1;31m%s\033[0m' "$warn_row" "$col" "WARNING: All data on /dev/$device will be erased!"
         else
             printf '\033[%d;%dH%s' $((summary_row + 1)) "$col" "Mode: Install alongside"
             printf '\033[%d;%dH%s' $((summary_row + 2)) "$col" "Partition: /dev/$partition"
 
             warn_row=$((summary_row + 4))
-            printf '\033[%d;%dH\033[33m%s\033[0m' "$warn_row" "$col" "WARNING: Data on /dev/$partition will be erased!"
+            printf '\033[%d;%dH\033[1;31m%s\033[0m' "$warn_row" "$col" "WARNING: Data on /dev/$partition will be erased!"
         fi
 
         confirm_row=$((warn_row + 3))
