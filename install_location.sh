@@ -589,15 +589,13 @@ EOF
                     width=1
                 fi
 
-                # Color based on selection
+                # Color and pattern based on selection - green with different pattern
                 if [ "$i" -eq "$selected_part" ]; then
-                    printf '\033[7m'
-                fi
-
-                repeat_char '█' "$width"
-
-                if [ "$i" -eq "$selected_part" ]; then
+                    printf '\033[32m'
+                    repeat_char '▓' "$width"
                     printf '\033[0m'
+                else
+                    repeat_char '█' "$width"
                 fi
 
                 # Separator
