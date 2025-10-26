@@ -89,7 +89,6 @@ user_setup_tui() {
     # Configuration variables
     config_username=""
     config_password=""
-    config_is_admin=""
 
     # === SCREEN 1: Username Input ===
     username_screen() {
@@ -717,8 +716,7 @@ user_setup_tui() {
                             printf '\033[%d;%dH' "$field_row" $((field_col + cursor_pos))
                         fi
                     else
-                        # Set as admin user by default
-                        config_is_admin="yes"
+                        # Passwords match, go to summary
                         printf '\033[?25l'
                         summary_screen
                         return $?
@@ -753,138 +751,7 @@ user_setup_tui() {
         done
     }
 
-    # === SCREEN 4: Administrator Privileges ===
-    admin_screen() {
-        box_inner_height=14
-        box_height=$((box_inner_height + border_width))
-        start_row=$(((term_rows - box_height) / 2))
-        [ "$start_row" -lt 1 ] && start_row=1
-
-        printf '\033[H\033[2J'
-        draw_box_at "$start_row" "$start_col" "$box_inner_width" "$box_inner_height" 0
-
-        title="User Setup"
-        title_row=$((start_row + padding + 1))
-        title_col=$((start_col + (box_inner_width - ${#title}) / 2 + 1))
-        printf '\033[%d;%dH\033[1m%s\033[0m' "$title_row" "$title_col" "$title"
-
-        subtitle_row=$((title_row + 2))
-        subtitle="Administrator privileges"
-        subtitle_col=$((start_col + padding + 2))
-        printf '\033[%d;%dH\033[1m%s\033[0m' "$subtitle_row" "$subtitle_col" "$subtitle"
-
-        info_row=$((subtitle_row + 1))
-        info_text="\033[2m(Grant $config_username administrator rights?)\033[0m"
-        info_col=$((start_col + padding + 2))
-        printf '\033[%d;%dH%b' "$info_row" "$info_col" "$info_text"
-
-        # Options
-        yes_row=$((info_row + 3))
-        yes_text="Yes - Make administrator (sudo access)"
-        no_row=$((yes_row + 2))
-        no_text="No - Standard user"
-
-        # Draw options
-        draw_admin_options() {
-            selected="$1"
-
-            col=$((start_col + padding + 2))
-
-            # Yes option
-            printf '\033[%d;%dH' "$yes_row" "$col"
-            if [ "$selected" -eq 1 ]; then
-                printf '\033[7m> %s\033[0m' "$yes_text"
-            else
-                printf '  %s' "$yes_text"
-            fi
-
-            # No option
-            printf '\033[%d;%dH' "$no_row" "$col"
-            if [ "$selected" -eq 2 ]; then
-                printf '\033[7m> %s\033[0m' "$no_text"
-            else
-                printf '  %s' "$no_text"
-            fi
-        }
-
-        # Draw buttons
-        draw_admin_buttons() {
-            back_selected="$1"
-
-            button_row=$((start_row + box_inner_height - padding))
-
-            back_text="Back"
-            button_col=$((start_col + (box_inner_width - ${#back_text}) / 2 + 1))
-
-            printf '\033[%d;%dH' "$button_row" "$button_col"
-
-            if [ "$back_selected" -eq 1 ]; then
-                printf '\033[7m%s\033[0m' "$back_text"
-            else
-                printf '%s' "$back_text"
-            fi
-        }
-
-        # Selection loop
-        selected_option=1  # Default to Yes
-        selected_item=0  # 0 = option, 1 = back
-
-        draw_admin_options "$selected_option"
-        draw_admin_buttons 0
-
-        while true; do
-            char=$(dd bs=1 count=1 2>/dev/null)
-
-            if [ "$char" = "$(printf '\033')" ]; then
-                dd bs=1 count=1 2>/dev/null | read -r _ 2>/dev/null
-                char=$(dd bs=1 count=1 2>/dev/null)
-
-                case "$char" in
-                    A) # Up
-                        if [ "$selected_item" -eq 0 ]; then
-                            if [ "$selected_option" -gt 1 ]; then
-                                selected_option=$((selected_option - 1))
-                                draw_admin_options "$selected_option"
-                            fi
-                        elif [ "$selected_item" -eq 1 ]; then
-                            selected_item=0
-                            draw_admin_options "$selected_option"
-                            draw_admin_buttons 0
-                        fi
-                        ;;
-                    B) # Down
-                        if [ "$selected_item" -eq 0 ]; then
-                            if [ "$selected_option" -lt 2 ]; then
-                                selected_option=$((selected_option + 1))
-                                draw_admin_options "$selected_option"
-                            else
-                                selected_item=1
-                                draw_admin_options "$selected_option"
-                                draw_admin_buttons 1
-                            fi
-                        fi
-                        ;;
-                esac
-            elif [ "$char" = "$(printf '\n')" ] || [ "$char" = "$(printf '\r')" ]; then
-                if [ "$selected_item" -eq 1 ]; then
-                    # Back
-                    password_confirm_screen
-                    return $?
-                else
-                    # Select option
-                    if [ "$selected_option" -eq 1 ]; then
-                        config_is_admin="yes"
-                    else
-                        config_is_admin="no"
-                    fi
-                    summary_screen
-                    return $?
-                fi
-            fi
-        done
-    }
-
-    # === SCREEN 5: Summary and Confirmation ===
+    # === SCREEN 4: Summary and Confirmation ===
     summary_screen() {
         box_inner_height=18
         box_height=$((box_inner_height + border_width))
@@ -991,7 +858,6 @@ user_setup_tui() {
                     cat > /tmp/jamstaller_user_config.$$ <<EOF
 USER_USERNAME=$config_username
 USER_PASSWORD=$config_password
-USER_IS_ADMIN=$config_is_admin
 EOF
                     cleanup 1
                     return 1

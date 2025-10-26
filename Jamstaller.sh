@@ -368,6 +368,397 @@ installer_tui() {
         done
     }
 
+    # Check network connectivity
+    check_connectivity() {
+        ping -c 1 -W 2 8.8.8.8 >/dev/null 2>&1
+    }
+
+    # Show error when not all stages are complete
+    show_incomplete_error() {
+        # Calculate dialog dimensions
+        error_msg="Cannot proceed with installation"
+        info_msg="Please complete all setup stages first"
+        button_text="OK"
+
+        msg_len=${#error_msg}
+        info_len=${#info_msg}
+        max_len=$msg_len
+        [ "$info_len" -gt "$max_len" ] && max_len=$info_len
+
+        dialog_content_width=$max_len
+        dialog_inner_width=$((dialog_content_width + 4 + padding * 2))
+        dialog_width=$((dialog_inner_width + border_width))
+        dialog_inner_height=$((4 + padding * 2))
+        dialog_height=$((dialog_inner_height + border_width))
+
+        # Center dialog
+        dialog_start_row=$(((term_rows - dialog_height) / 2))
+        dialog_start_col=$(((term_cols - dialog_width) / 2))
+        [ "$dialog_start_row" -lt 1 ] && dialog_start_row=1
+        [ "$dialog_start_col" -lt 1 ] && dialog_start_col=1
+
+        # Draw dialog box
+        draw_box_at "$dialog_start_row" "$dialog_start_col" "$dialog_inner_width" "$dialog_inner_height" 1
+
+        # Draw error message
+        error_row=$((dialog_start_row + padding + 1))
+        error_col=$((dialog_start_col + (dialog_inner_width - msg_len) / 2 + 1))
+        printf '\033[%d;%dH\033[1;31m%s\033[0m' "$error_row" "$error_col" "$error_msg"
+
+        # Draw info message
+        info_row=$((error_row + 1))
+        info_col=$((dialog_start_col + (dialog_inner_width - info_len) / 2 + 1))
+        printf '\033[%d;%dH%s' "$info_row" "$info_col" "$info_msg"
+
+        # Draw button
+        button_row=$((info_row + 2))
+        button_col=$((dialog_start_col + (dialog_inner_width - ${#button_text}) / 2 + 1))
+        printf '\033[%d;%dH\033[7m%s\033[0m' "$button_row" "$button_col" "$button_text"
+
+        # Wait for Enter
+        stty -echo -icanon
+        while true; do
+            char=$(dd bs=1 count=1 2>/dev/null)
+            if [ "$char" = "$(printf '\n')" ] || [ "$char" = "$(printf '\r')" ]; then
+                return 0
+            fi
+        done
+    }
+
+    # Show detailed review screen
+    show_review_screen() {
+        # Load configuration files
+        install_config=$(find /tmp -name "jamstaller_install_config.*" 2>/dev/null | head -1)
+        system_config=$(find /tmp -name "jamstaller_system_config.*" 2>/dev/null | head -1)
+        user_config=$(find /tmp -name "jamstaller_user_config.*" 2>/dev/null | head -1)
+
+        # Source configs
+        [ -f "$install_config" ] && . "$install_config"
+        [ -f "$system_config" ] && . "$system_config"
+        [ -f "$user_config" ] && . "$user_config"
+
+        # Calculate box dimensions
+        box_inner_width=70
+        box_width=$((box_inner_width + border_width))
+        box_inner_height=24
+        box_height=$((box_inner_height + border_width))
+
+        dialog_start_row=$(((term_rows - box_height) / 2))
+        dialog_start_col=$(((term_cols - box_width) / 2))
+        [ "$dialog_start_row" -lt 1 ] && dialog_start_row=1
+        [ "$dialog_start_col" -lt 1 ] && dialog_start_col=1
+
+        # Clear and draw box
+        printf '\033[H\033[2J'
+        draw_box_at "$dialog_start_row" "$dialog_start_col" "$box_inner_width" "$box_inner_height" 0
+
+        # Draw title
+        title="Installation Review"
+        title_row=$((dialog_start_row + padding + 1))
+        title_col=$((dialog_start_col + (box_inner_width - ${#title}) / 2 + 1))
+        printf '\033[%d;%dH\033[1m%s\033[0m' "$title_row" "$title_col" "$title"
+
+        # Draw subtitle
+        subtitle_row=$((title_row + 1))
+        subtitle="Review your configuration before proceeding"
+        subtitle_col=$((dialog_start_col + (box_inner_width - ${#subtitle}) / 2 + 1))
+        printf '\033[%d;%dH\033[2m%s\033[0m' "$subtitle_row" "$subtitle_col" "$subtitle"
+
+        # Content area
+        content_row=$((subtitle_row + 2))
+        content_col=$((dialog_start_col + padding + 2))
+
+        # Network section
+        printf '\033[%d;%dH\033[1mNetwork:\033[0m' "$content_row" "$content_col"
+        content_row=$((content_row + 1))
+        if check_connectivity 2>/dev/null; then
+            printf '\033[%d;%dH  \033[32m[*]\033[0m Connected' "$content_row" "$content_col"
+        else
+            printf '\033[%d;%dH  \033[33m[ ]\033[0m Not connected (will skip)' "$content_row" "$content_col"
+        fi
+
+        # Install Location section
+        content_row=$((content_row + 2))
+        printf '\033[%d;%dH\033[1mInstall Location:\033[0m' "$content_row" "$content_col"
+        content_row=$((content_row + 1))
+        printf '\033[%d;%dH  Device: %s' "$content_row" "$content_col" "${INSTALL_DEVICE:-Unknown}"
+        content_row=$((content_row + 1))
+        if [ "$INSTALL_MODE" = "full" ]; then
+            printf '\033[%d;%dH  Mode: \033[1;31mFull disk (will erase all data)\033[0m' "$content_row" "$content_col"
+        else
+            printf '\033[%d;%dH  Mode: Alongside existing OS' "$content_row" "$content_col"
+            content_row=$((content_row + 1))
+            printf '\033[%d;%dH  Partition: %s' "$content_row" "$content_col" "${INSTALL_PARTITION:-Unknown}"
+        fi
+
+        # System Setup section
+        content_row=$((content_row + 2))
+        printf '\033[%d;%dH\033[1mSystem Configuration:\033[0m' "$content_row" "$content_col"
+        content_row=$((content_row + 1))
+        printf '\033[%d;%dH  Hostname: %s' "$content_row" "$content_col" "${SYSTEM_HOSTNAME:-Unknown}"
+        content_row=$((content_row + 1))
+        printf '\033[%d;%dH  Timezone: %s' "$content_row" "$content_col" "${SYSTEM_TIMEZONE:-Unknown}"
+        content_row=$((content_row + 1))
+        if [ "$SYSTEM_SWAP" = "true" ]; then
+            printf '\033[%d;%dH  Swap: Enabled' "$content_row" "$content_col"
+        else
+            printf '\033[%d;%dH  Swap: Disabled' "$content_row" "$content_col"
+        fi
+
+        # User Setup section
+        content_row=$((content_row + 2))
+        printf '\033[%d;%dH\033[1mUser Account:\033[0m' "$content_row" "$content_col"
+        content_row=$((content_row + 1))
+        printf '\033[%d;%dH  Username: %s' "$content_row" "$content_col" "${USER_USERNAME:-Unknown}"
+
+        # Buttons
+        draw_review_buttons() {
+            back_selected="$1"
+            install_selected="$2"
+
+            button_row=$((dialog_start_row + box_inner_height - padding))
+
+            back_text="Back"
+            install_text="Install"
+            gap=3
+            total_width=$((${#back_text} + gap + ${#install_text}))
+            button_col=$((dialog_start_col + (box_inner_width - total_width) / 2 + 1))
+
+            printf '\033[%d;%dH' "$button_row" "$button_col"
+
+            if [ "$back_selected" -eq 1 ]; then
+                printf '\033[7m%s\033[0m' "$back_text"
+            else
+                printf '%s' "$back_text"
+            fi
+
+            printf '   '
+
+            if [ "$install_selected" -eq 1 ]; then
+                printf '\033[7m%s\033[0m' "$install_text"
+            else
+                printf '%s' "$install_text"
+            fi
+        }
+
+        # Input loop
+        selected_button=1  # 1 = back, 2 = install
+        draw_review_buttons 1 0
+
+        stty -echo -icanon
+        while true; do
+            char=$(dd bs=1 count=1 2>/dev/null)
+
+            if [ "$char" = "$(printf '\033')" ]; then
+                dd bs=1 count=1 2>/dev/null | read -r _ 2>/dev/null
+                char=$(dd bs=1 count=1 2>/dev/null)
+
+                case "$char" in
+                    C) # Right
+                        if [ "$selected_button" -eq 1 ]; then
+                            selected_button=2
+                            draw_review_buttons 0 1
+                        fi
+                        ;;
+                    D) # Left
+                        if [ "$selected_button" -eq 2 ]; then
+                            selected_button=1
+                            draw_review_buttons 1 0
+                        fi
+                        ;;
+                esac
+            elif [ "$char" = "$(printf '\n')" ] || [ "$char" = "$(printf '\r')" ]; then
+                if [ "$selected_button" -eq 1 ]; then
+                    return 0  # Back
+                else
+                    return 1  # Install
+                fi
+            fi
+        done
+    }
+
+    # Show final warning before installation
+    show_final_warning() {
+        # Load install config to get device
+        install_config=$(find /tmp -name "jamstaller_install_config.*" 2>/dev/null | head -1)
+        [ -f "$install_config" ] && . "$install_config"
+
+        # Calculate dialog dimensions
+        warning_line1="FINAL WARNING"
+        warning_line2="This will erase data on ${INSTALL_DEVICE:-the selected device}"
+        warning_line3="This action CANNOT be undone!"
+        button_cancel="Cancel"
+        button_confirm="Confirm & Install"
+
+        max_len=${#warning_line2}
+        [ ${#warning_line3} -gt "$max_len" ] && max_len=${#warning_line3}
+
+        dialog_content_width=$max_len
+        dialog_inner_width=$((dialog_content_width + 4 + padding * 2))
+        dialog_width=$((dialog_inner_width + border_width))
+        dialog_inner_height=$((7 + padding * 2))
+        dialog_height=$((dialog_inner_height + border_width))
+
+        # Center dialog
+        dialog_start_row=$(((term_rows - dialog_height) / 2))
+        dialog_start_col=$(((term_cols - dialog_width) / 2))
+        [ "$dialog_start_row" -lt 1 ] && dialog_start_row=1
+        [ "$dialog_start_col" -lt 1 ] && dialog_start_col=1
+
+        # Draw dialog box
+        draw_box_at "$dialog_start_row" "$dialog_start_col" "$dialog_inner_width" "$dialog_inner_height" 1
+
+        # Draw warning messages
+        warn_row=$((dialog_start_row + padding + 1))
+        warn_col=$((dialog_start_col + (dialog_inner_width - ${#warning_line1}) / 2 + 1))
+        printf '\033[%d;%dH\033[1;31m%s\033[0m' "$warn_row" "$warn_col" "$warning_line1"
+
+        warn_row=$((warn_row + 2))
+        warn_col=$((dialog_start_col + (dialog_inner_width - ${#warning_line2}) / 2 + 1))
+        printf '\033[%d;%dH%s' "$warn_row" "$warn_col" "$warning_line2"
+
+        warn_row=$((warn_row + 1))
+        warn_col=$((dialog_start_col + (dialog_inner_width - ${#warning_line3}) / 2 + 1))
+        printf '\033[%d;%dH\033[1m%s\033[0m' "$warn_row" "$warn_col" "$warning_line3"
+
+        # Draw buttons
+        draw_final_buttons() {
+            cancel_selected="$1"
+            confirm_selected="$2"
+
+            button_row=$((dialog_start_row + dialog_inner_height - padding))
+
+            gap=3
+            total_width=$((${#button_cancel} + gap + ${#button_confirm}))
+            button_col=$((dialog_start_col + (dialog_inner_width - total_width) / 2 + 1))
+
+            printf '\033[%d;%dH' "$button_row" "$button_col"
+
+            if [ "$cancel_selected" -eq 1 ]; then
+                printf '\033[7m%s\033[0m' "$button_cancel"
+            else
+                printf '%s' "$button_cancel"
+            fi
+
+            printf '   '
+
+            if [ "$confirm_selected" -eq 1 ]; then
+                printf '\033[7m%s\033[0m' "$button_confirm"
+            else
+                printf '%s' "$button_confirm"
+            fi
+        }
+
+        # Input loop - default to Cancel for safety
+        selected_button=1  # 1 = cancel, 2 = confirm
+        draw_final_buttons 1 0
+
+        stty -echo -icanon
+        while true; do
+            char=$(dd bs=1 count=1 2>/dev/null)
+
+            if [ "$char" = "$(printf '\033')" ]; then
+                dd bs=1 count=1 2>/dev/null | read -r _ 2>/dev/null
+                char=$(dd bs=1 count=1 2>/dev/null)
+
+                case "$char" in
+                    C) # Right
+                        if [ "$selected_button" -eq 1 ]; then
+                            selected_button=2
+                            draw_final_buttons 0 1
+                        fi
+                        ;;
+                    D) # Left
+                        if [ "$selected_button" -eq 2 ]; then
+                            selected_button=1
+                            draw_final_buttons 1 0
+                        fi
+                        ;;
+                esac
+            elif [ "$char" = "$(printf '\n')" ] || [ "$char" = "$(printf '\r')" ]; then
+                if [ "$selected_button" -eq 1 ]; then
+                    return 0  # Cancel
+                else
+                    return 1  # Confirm
+                fi
+            fi
+        done
+    }
+
+    # Run installation (placeholder)
+    run_installation() {
+        # Calculate dialog dimensions
+        dialog_inner_width=60
+        dialog_width=$((dialog_inner_width + border_width))
+        dialog_inner_height=10
+        dialog_height=$((dialog_inner_height + border_width))
+
+        dialog_start_row=$(((term_rows - dialog_height) / 2))
+        dialog_start_col=$(((term_cols - dialog_width) / 2))
+        [ "$dialog_start_row" -lt 1 ] && dialog_start_row=1
+        [ "$dialog_start_col" -lt 1 ] && dialog_start_col=1
+
+        # Draw dialog box
+        printf '\033[H\033[2J'
+        draw_box_at "$dialog_start_row" "$dialog_start_col" "$dialog_inner_width" "$dialog_inner_height" 0
+
+        # Draw title
+        title="Installing System"
+        title_row=$((dialog_start_row + padding + 1))
+        title_col=$((dialog_start_col + (dialog_inner_width - ${#title}) / 2 + 1))
+        printf '\033[%d;%dH\033[1m%s\033[0m' "$title_row" "$title_col" "$title"
+
+        # Installation steps
+        step_row=$((title_row + 2))
+        step_col=$((dialog_start_col + padding + 2))
+
+        # Spinner chars (classic ASCII spinner for TTY compatibility)
+        spinner_chars="\\|/-"
+
+        # Simulate installation steps
+        steps="Partitioning disk|Formatting filesystems|Installing base system|Configuring system|Installing bootloader|Finalizing installation"
+        step_count=0
+
+        printf '%s' "$steps" | tr '|' '\n' | while IFS= read -r step; do
+            step_count=$((step_count + 1))
+            current_row=$((step_row + step_count - 1))
+
+            # Show spinner while "working"
+            i=0
+            while [ "$i" -lt 10 ]; do
+                spinner_idx=$((i % 4))
+                spinner_char=$(echo "$spinner_chars" | cut -c$((spinner_idx + 1)))
+                printf '\033[%d;%dH%s %s...' "$current_row" "$step_col" "$spinner_char" "$step"
+                sleep 0.1
+                i=$((i + 1))
+            done
+
+            # Show complete
+            printf '\033[%d;%dH\033[32m[*]\033[0m %s' "$current_row" "$step_col" "$step"
+        done
+
+        # Show completion message
+        complete_row=$((step_row + 8))
+        complete_msg="Installation complete!"
+        complete_col=$((dialog_start_col + (dialog_inner_width - ${#complete_msg}) / 2 + 1))
+        printf '\033[%d;%dH\033[1;32m%s\033[0m' "$complete_row" "$complete_col" "$complete_msg"
+
+        # Exit button
+        button_row=$((complete_row + 2))
+        button_text="Exit"
+        button_col=$((dialog_start_col + (dialog_inner_width - ${#button_text}) / 2 + 1))
+        printf '\033[%d;%dH\033[7m%s\033[0m' "$button_row" "$button_col" "$button_text"
+
+        # Wait for Enter
+        stty -echo -icanon
+        while true; do
+            char=$(dd bs=1 count=1 2>/dev/null)
+            if [ "$char" = "$(printf '\n')" ] || [ "$char" = "$(printf '\r')" ]; then
+                return 0
+            fi
+        done
+    }
+
     # Save cursor position and hide cursor
     printf '\033[?1049h\033[H\033[2J\033[?25l'
 
@@ -517,19 +908,53 @@ installer_tui() {
                     return 1
                 fi
             elif [ "$selected" -eq $((stage_count + 2)) ]; then
-                # Install button - show confirmation
-                show_confirmation "install"
-                confirm_result=$?
+                # Install button - check if all stages are complete
+                all_complete=1
+                i=1
+                while [ "$i" -le "$stage_count" ]; do
+                    eval "state=\$state_$i"
+                    if [ "$state" -ne 1 ]; then
+                        all_complete=0
+                        break
+                    fi
+                    i=$((i + 1))
+                done
 
-                # Redraw main UI
-                redraw_main_ui
-                draw_stage "$selected" 1
-                draw_buttons 0 1
+                if [ "$all_complete" -eq 0 ]; then
+                    # Show error - not all stages complete
+                    show_incomplete_error
 
-                # If confirmed (Yes selected = return 1), exit
-                if [ "$confirm_result" -eq 1 ]; then
-                    cleanup 0
-                    return 0
+                    # Redraw main UI
+                    redraw_main_ui
+                    draw_stage "$selected" 1
+                    draw_buttons 0 1
+                else
+                    # All stages complete - show review screen
+                    show_review_screen
+                    review_result=$?
+
+                    if [ "$review_result" -eq 0 ]; then
+                        # User went back, redraw main UI
+                        redraw_main_ui
+                        draw_stage "$selected" 1
+                        draw_buttons 0 1
+                    elif [ "$review_result" -eq 1 ]; then
+                        # User confirmed install - show final warning
+                        show_final_warning
+                        final_result=$?
+
+                        if [ "$final_result" -eq 0 ]; then
+                            # User cancelled, redraw main UI
+                            redraw_main_ui
+                            draw_stage "$selected" 1
+                            draw_buttons 0 1
+                        else
+                            # User confirmed - run installation
+                            run_installation
+                            cleanup 0
+                            return 0
+                        fi
+                    fi
                 fi
             else
                 # Launch stage module
