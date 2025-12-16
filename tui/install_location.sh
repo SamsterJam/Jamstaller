@@ -863,7 +863,7 @@ EOF
                     # Confirm - save configuration and exit
                     # Save to temp file for main installer to read
                     cat > /tmp/jamstaller_install_config.$$ <<EOF
-INSTALL_DEVICE=/dev/$device
+DEVICE=$device
 INSTALL_MODE=$mode
 INSTALL_PARTITION=/dev/$partition
 EOF

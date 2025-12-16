@@ -40,6 +40,50 @@ main() {
         exit 0
     fi
 
+    # Load configuration from TUI modules
+    log_info "Loading configuration..."
+
+    # Source all config files created by TUI modules
+    for config_file in /tmp/jamstaller_*_config.*; do
+        if [ -f "$config_file" ]; then
+            source "$config_file"
+            rm -f "$config_file"  # Clean up temp files
+        fi
+    done
+
+    # Calculate partition names based on device type
+    if [[ $DEVICE == nvme* ]]; then
+        EFI_PARTITION="/dev/${DEVICE}p1"
+        ROOT_PARTITION="/dev/${DEVICE}p2"
+    else
+        EFI_PARTITION="/dev/${DEVICE}1"
+        ROOT_PARTITION="/dev/${DEVICE}2"
+    fi
+
+    # Set default locale if not set
+    : "${LOCALE:=en_US.UTF-8}"
+
+    # Export variables for child processes (steps)
+    export HOSTNAME
+    export TIMEZONE
+    export USERNAME
+    export USER_PASSWORD
+    export DEVICE
+    export EFI_PARTITION
+    export ROOT_PARTITION
+    export SWAP_SIZE
+    export LOCALE
+    export MOUNT_POINT
+
+    # Show installation summary before proceeding
+    show_installation_summary
+
+    # Confirm installation
+    if ! confirm_installation; then
+        log_error "Installation cancelled by user"
+        exit 0
+    fi
+
     # TUI completed successfully, proceed with installation
     execute_install_steps "$SCRIPT_DIR/steps"
 

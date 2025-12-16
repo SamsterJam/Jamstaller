@@ -854,7 +854,7 @@ user_setup_tui() {
                 else
                     # Confirm - save configuration
                     cat > /tmp/jamstaller_user_config.$$ <<EOF
-USER_USERNAME=$config_username
+USERNAME=$config_username
 USER_PASSWORD=$config_password
 EOF
                     cleanup 1
