@@ -26,12 +26,47 @@ get_step_description() {
     echo "$desc"
 }
 
-# Execute all installation steps
+# Draw a box at specified position
+draw_box_at() {
+    local row=$1
+    local col=$2
+    local width=$3
+    local height=$4
+
+    local inner_width=$((width - 2))
+
+    # Top border
+    printf '\033[%d;%dH┌' "$row" "$col"
+    for ((i=0; i<inner_width; i++)); do printf '─'; done
+    printf '┐'
+
+    # Middle rows
+    for ((i=1; i<=height; i++)); do
+        printf '\033[%d;%dH│' "$((row + i))" "$col"
+        printf '\033[%d;%dH│' "$((row + i))" "$((col + width - 1))"
+    done
+
+    # Bottom border
+    printf '\033[%d;%dH└' "$((row + height + 1))" "$col"
+    for ((i=0; i<inner_width; i++)); do printf '─'; done
+    printf '┘'
+}
+
+# Execute all installation steps with TUI
 execute_install_steps() {
     local steps_dir=$1
     local failed_steps=()
     local total_steps=0
     local current_step=0
+
+    # Get terminal dimensions
+    if command -v tput >/dev/null 2>&1; then
+        term_rows=$(tput lines)
+        term_cols=$(tput cols)
+    else
+        term_rows=24
+        term_cols=80
+    fi
 
     # Count total steps
     total_steps=$(ls -1 "$steps_dir"/*.sh 2>/dev/null | wc -l)
@@ -41,65 +76,185 @@ execute_install_steps() {
         return 1
     fi
 
-    log_info "Found $total_steps installation steps"
-    echo ""
+    # Collect step information
+    declare -a step_files
+    declare -a step_names
+    declare -a step_critical
+    declare -a step_onfail
+    declare -a step_status  # 0=pending, 1=running, 2=complete, 3=failed
 
-    # Execute each step in order
     for step_file in $(ls "$steps_dir"/*.sh | sort -V); do
-        current_step=$((current_step + 1))
+        step_files+=("$step_file")
+        step_names+=("$(get_step_description "$step_file")")
+        step_critical+=("$(parse_metadata "$step_file" "CRITICAL")")
+        step_onfail+=("$(parse_metadata "$step_file" "ONFAIL")")
+        step_status+=(0)
+    done
 
-        local step_name=$(get_step_description "$step_file")
-        local is_critical=$(parse_metadata "$step_file" "CRITICAL")
-        local on_fail=$(parse_metadata "$step_file" "ONFAIL")
+    # Calculate box dimensions
+    local box_width=70
+    local box_height=$((total_steps + 6))
+    local box_row=$(( (term_rows - box_height) / 2 ))
+    local box_col=$(( (term_cols - box_width) / 2 ))
 
-        # Display progress
-        echo ""
-        echo -e "${BOLD_BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        echo -e "${BOLD_BLUE}[$current_step/$total_steps] $step_name...${NC}"
-        echo -e "${BOLD_BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    # Ensure box fits on screen
+    if [ $box_row -lt 1 ]; then box_row=1; fi
+    if [ $box_col -lt 1 ]; then box_col=1; fi
 
-        # Execute the step
-        if bash "$step_file" 2>&1 | tee -a "$LOG_FILE"; then
-            echo -e "${GREEN}✓${NC} $step_name - Complete"
+    # Clear screen and hide cursor
+    printf '\033[H\033[2J\033[?25l'
+
+    # Draw the main box
+    draw_box_at "$box_row" "$box_col" "$box_width" "$box_height"
+
+    # Draw title
+    local title="Installing System"
+    local title_row=$((box_row + 2))
+    local title_col=$(( box_col + (box_width - ${#title}) / 2 ))
+    printf '\033[%d;%dH\033[1m%s\033[0m' "$title_row" "$title_col" "$title"
+
+    # Draw separator
+    local sep_row=$((title_row + 1))
+    printf '\033[%d;%dH├' "$sep_row" "$box_col"
+    for ((i=0; i<box_width-2; i++)); do printf '─'; done
+    printf '┤'
+
+    # Step list starts here
+    local step_list_row=$((sep_row + 2))
+    local step_col=$((box_col + 3))
+
+    # Spinner characters
+    local spinner_chars='|/-\'
+
+    # Function to update step display
+    update_step_display() {
+        local idx=$1
+        local status=$2
+        local spinner_char=$3
+        local row=$((step_list_row + idx))
+        local name="${step_names[$idx]}"
+
+        # Move cursor to step row
+        printf '\033[%d;%dH' "$row" "$step_col"
+
+        case $status in
+            0) # Pending
+                printf '[ ] %s' "$name"
+                ;;
+            1) # Running (with spinner)
+                printf '\033[33m[%s]\033[0m %s' "$spinner_char" "$name"
+                ;;
+            2) # Complete
+                printf '\033[32m[*]\033[0m %s' "$name"
+                ;;
+            3) # Failed
+                printf '\033[31m[✗]\033[0m %s' "$name"
+                ;;
+        esac
+
+        # Clear to end of line
+        printf '\033[K'
+    }
+
+    # Initial display of all steps as pending
+    for ((i=0; i<total_steps; i++)); do
+        update_step_display $i 0 ""
+    done
+
+    # Execute each step
+    for ((current_step=0; current_step<total_steps; current_step++)); do
+        local step_file="${step_files[$current_step]}"
+        local step_name="${step_names[$current_step]}"
+        local is_critical="${step_critical[$current_step]}"
+        local on_fail="${step_onfail[$current_step]}"
+
+        # Create a temp file for step output
+        local step_output=$(mktemp)
+        local step_pid_file=$(mktemp)
+
+        # Run step in background
+        (
+            bash "$step_file" >> "$LOG_FILE" 2>&1
+            echo $? > "$step_pid_file"
+        ) &
+        local step_pid=$!
+
+        # Show spinner while step runs
+        local spinner_idx=0
+        step_status[$current_step]=1
+
+        while kill -0 "$step_pid" 2>/dev/null; do
+            local spinner_char="${spinner_chars:$spinner_idx:1}"
+            update_step_display $current_step 1 "$spinner_char"
+            spinner_idx=$(( (spinner_idx + 1) % 4 ))
+            sleep 0.1
+        done
+
+        # Wait for process to fully complete
+        wait "$step_pid" 2>/dev/null
+        local exit_code=$(cat "$step_pid_file" 2>/dev/null || echo "1")
+
+        # Update display based on result
+        if [ "$exit_code" -eq 0 ]; then
+            step_status[$current_step]=2
+            update_step_display $current_step 2 ""
         else
-            echo -e "${RED}✗${NC} $step_name - Failed"
-
-            # Show custom failure message if provided
-            if [ -n "$on_fail" ]; then
-                echo -e "${RED}   $on_fail${NC}"
-            fi
+            step_status[$current_step]=3
+            update_step_display $current_step 3 ""
 
             # Check if this is a critical step
             if [[ "$is_critical" == "yes" ]]; then
-                echo ""
-                echo -e "${RED}╔════════════════════════════════════════════╗${NC}"
-                echo -e "${RED}║  CRITICAL STEP FAILED                      ║${NC}"
-                echo -e "${RED}║  Installation cannot continue              ║${NC}"
-                echo -e "${RED}╚════════════════════════════════════════════╝${NC}"
-                echo ""
-                echo -e "${YELLOW}Check the log file for details: $LOG_FILE${NC}"
+                # Show error message at bottom of box
+                local error_row=$((box_row + box_height - 1))
+                printf '\033[%d;%dH\033[31m Critical step failed! Check log: %s\033[0m' \
+                    "$error_row" "$((box_col + 2))" "$LOG_FILE"
+
+                # Wait a moment for user to see the error
+                sleep 3
+
+                # Show cursor and exit
+                printf '\033[?25h'
+                rm -f "$step_output" "$step_pid_file"
                 return 1
             else
-                log_warning "Non-critical step failed, continuing..."
                 failed_steps+=("$step_name")
             fi
         fi
+
+        # Clean up temp files
+        rm -f "$step_output" "$step_pid_file"
     done
 
-    echo ""
-    echo -e "${BOLD_BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-
-    # Summary
+    # Show completion message
+    local complete_row=$((box_row + box_height - 1))
     if [ ${#failed_steps[@]} -eq 0 ]; then
-        echo -e "${GREEN}All steps completed successfully!${NC}"
+        printf '\033[%d;%dH\033[1;32m%s\033[0m' "$complete_row" \
+            "$((box_col + (box_width - 29) / 2))" "Installation completed successfully!"
+    else
+        printf '\033[%d;%dH\033[1;33m%s\033[0m' "$complete_row" \
+            "$((box_col + (box_width - 45) / 2))" "Installation completed with ${#failed_steps[@]} warning(s)"
+    fi
+
+    # Wait for user to press Enter
+    local prompt_row=$((complete_row + 2))
+    printf '\033[%d;%dH\033[2mPress Enter to continue...\033[0m' \
+        "$prompt_row" "$((box_col + (box_width - 27) / 2))"
+
+    # Show cursor
+    printf '\033[?25h'
+
+    # Wait for Enter
+    stty -echo
+    read -r
+    stty echo
+
+    # Clear screen
+    printf '\033[H\033[2J'
+
+    # Return appropriate code
+    if [ ${#failed_steps[@]} -eq 0 ]; then
         return 0
     else
-        echo -e "${YELLOW}Installation completed with ${#failed_steps[@]} non-critical failure(s):${NC}"
-        for failed in "${failed_steps[@]}"; do
-            echo -e "  ${RED}•${NC} $failed"
-        done
-        echo ""
-        echo -e "${YELLOW}You may need to fix these manually after installation.${NC}"
-        return 0
+        return 0  # Non-critical failures still return success
     fi
 }
