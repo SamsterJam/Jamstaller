@@ -149,26 +149,45 @@ execute_install_steps() {
         local row=$((step_list_row + idx))
         local name="${step_names[$idx]}"
 
+        # Calculate max width for step text (leave room for border and padding)
+        local max_text_width=$((box_width - 8))  # 3 for left padding + 4 for [X] + 1 for right padding
+
+        # Truncate name if too long
+        if [ ${#name} -gt $max_text_width ]; then
+            name="${name:0:$((max_text_width - 3))}..."
+        fi
+
         # Move cursor to step row
         printf '\033[%d;%dH' "$row" "$step_col"
 
+        # Print status and name
+        local line=""
         case $status in
             0) # Pending
-                printf '[ ] %s' "$name"
+                line="[ ] $name"
                 ;;
             1) # Running (with spinner)
-                printf '\033[33m[%s]\033[0m %s' "$spinner_char" "$name"
+                line="\033[33m[$spinner_char]\033[0m $name"
                 ;;
             2) # Complete
-                printf '\033[32m[*]\033[0m %s' "$name"
+                line="\033[32m[*]\033[0m $name"
                 ;;
             3) # Failed
-                printf '\033[31m[✗]\033[0m %s' "$name"
+                line="\033[31m[✗]\033[0m $name"
                 ;;
         esac
 
-        # Clear to end of line
-        printf '\033[K'
+        printf '%b' "$line"
+
+        # Pad with spaces to clear old text without erasing right border
+        local text_len=$((4 + ${#name}))  # 4 for [X]
+        local padding=$((max_text_width - ${#name}))
+        if [ $padding -gt 0 ]; then
+            repeat_char ' ' "$padding"
+        fi
+
+        # Redraw right border to ensure it's visible
+        printf '\033[%d;%dH│' "$row" "$right_col"
     }
 
     # Initial display of all steps as pending
