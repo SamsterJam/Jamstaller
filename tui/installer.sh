@@ -1,7 +1,6 @@
 #!/bin/sh
 
 # TUI Installer Function
-# Usage: installer_tui "Title" "Stage 1" "Stage 2" "Stage 3"
 installer_tui() {
     # Parse arguments
     [ "$#" -lt 2 ] && return 1
@@ -961,32 +960,6 @@ installer_tui() {
                 eval "stage_name=\$stage_$selected"
 
                 case "$stage_name" in
-                    "Network Setup")
-                        # Temporarily disable main script's signal handler
-                        trap - INT
-
-                        # Run network setup module
-                        ./network_setup.sh
-                        network_result=$?
-
-                        # Re-enable main script's signal handler and reset counter
-                        trap 'handle_sigint' INT
-                        ctrl_c_count=0
-
-                        # Update state based on result
-                        if [ "$network_result" -eq 1 ]; then
-                            eval "state_$selected=1"
-                        else
-                            eval "state_$selected=0"
-                        fi
-
-                        # Restore terminal state and redraw main UI
-                        printf '\033[?1049h\033[H\033[2J\033[?25l'
-                        stty -echo -icanon
-                        redraw_main_ui
-                        draw_stage "$selected" 1
-                        draw_buttons 0 0
-                        ;;
                     "Install Location")
                         # Temporarily disable main script's signal handler
                         trap - INT
@@ -1099,7 +1072,6 @@ echo -e "
 " && clear
 
 installer_tui "Jamstaller" \
-  "Network Setup" \
   "Install Location" \
   "System Setup" \
   "User Setup" 
