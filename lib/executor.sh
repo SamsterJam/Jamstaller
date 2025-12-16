@@ -93,6 +93,7 @@ execute_install_steps() {
 
     # Calculate box dimensions
     local box_width=70
+    local inner_width=$((box_width - 2))
     local box_height=$((total_steps + 6))
     local box_row=$(( (term_rows - box_height) / 2 ))
     local box_col=$(( (term_cols - box_width) / 2 ))
@@ -107,6 +108,10 @@ execute_install_steps() {
     # Draw the main box
     draw_box_at "$box_row" "$box_col" "$box_width" "$box_height"
 
+    # Flush to ensure box renders
+    printf '\033[0m'
+    sleep 0.05
+
     # Draw title
     local title="Installing System"
     local title_row=$((box_row + 2))
@@ -116,8 +121,11 @@ execute_install_steps() {
     # Draw separator
     local sep_row=$((title_row + 1))
     printf '\033[%d;%dH├' "$sep_row" "$box_col"
-    for ((i=0; i<box_width-2; i++)); do printf '─'; done
+    for ((i=0; i<inner_width; i++)); do printf '─'; done
     printf '┤'
+
+    # Flush output to ensure proper rendering
+    printf '\033[0m'
 
     # Step list starts here
     local step_list_row=$((sep_row + 2))

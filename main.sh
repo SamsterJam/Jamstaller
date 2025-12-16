@@ -41,11 +41,9 @@ main() {
     fi
 
     # TUI completed successfully, proceed with installation
-    log_header "Beginning Installation"
     execute_install_steps "$SCRIPT_DIR/steps"
 
-    # Step 7: Cleanup
-    log_header "Installation Complete"
+    # Cleanup
     finishing_cleanup
 
     echo ""
