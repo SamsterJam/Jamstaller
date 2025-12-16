@@ -26,6 +26,15 @@ get_step_description() {
     echo "$desc"
 }
 
+# Repeat a character N times
+repeat_char() {
+    local char=$1
+    local count=$2
+    for ((i=0; i<count; i++)); do
+        printf '%s' "$char"
+    done
+}
+
 # Draw a box at specified position
 draw_box_at() {
     local row=$1
@@ -34,21 +43,22 @@ draw_box_at() {
     local height=$4
 
     local inner_width=$((width - 2))
+    local right_col=$((col + width - 1))
 
     # Top border
     printf '\033[%d;%dH┌' "$row" "$col"
-    for ((i=0; i<inner_width; i++)); do printf '─'; done
+    repeat_char '─' "$inner_width"
     printf '┐'
 
     # Middle rows
     for ((i=1; i<=height; i++)); do
         printf '\033[%d;%dH│' "$((row + i))" "$col"
-        printf '\033[%d;%dH│' "$((row + i))" "$((col + width - 1))"
+        printf '\033[%d;%dH│' "$((row + i))" "$right_col"
     done
 
     # Bottom border
     printf '\033[%d;%dH└' "$((row + height + 1))" "$col"
-    for ((i=0; i<inner_width; i++)); do printf '─'; done
+    repeat_char '─' "$inner_width"
     printf '┘'
 }
 
@@ -58,6 +68,9 @@ execute_install_steps() {
     local failed_steps=()
     local total_steps=0
     local current_step=0
+
+    # Clear screen and hide cursor IMMEDIATELY to prevent flash
+    printf '\033[H\033[2J\033[?25l'
 
     # Get terminal dimensions
     if command -v tput >/dev/null 2>&1; then
@@ -72,6 +85,7 @@ execute_install_steps() {
     total_steps=$(ls -1 "$steps_dir"/*.sh 2>/dev/null | wc -l)
 
     if [ $total_steps -eq 0 ]; then
+        printf '\033[?25h'  # Show cursor
         log_error "No installation steps found in $steps_dir"
         return 1
     fi
@@ -102,15 +116,11 @@ execute_install_steps() {
     if [ $box_row -lt 1 ]; then box_row=1; fi
     if [ $box_col -lt 1 ]; then box_col=1; fi
 
-    # Clear screen and hide cursor
-    printf '\033[H\033[2J\033[?25l'
+    # Calculate right column position
+    local right_col=$((box_col + box_width - 1))
 
     # Draw the main box
     draw_box_at "$box_row" "$box_col" "$box_width" "$box_height"
-
-    # Flush to ensure box renders
-    printf '\033[0m'
-    sleep 0.05
 
     # Draw title
     local title="Installing System"
@@ -121,11 +131,8 @@ execute_install_steps() {
     # Draw separator
     local sep_row=$((title_row + 1))
     printf '\033[%d;%dH├' "$sep_row" "$box_col"
-    for ((i=0; i<inner_width; i++)); do printf '─'; done
+    repeat_char '─' "$inner_width"
     printf '┤'
-
-    # Flush output to ensure proper rendering
-    printf '\033[0m'
 
     # Step list starts here
     local step_list_row=$((sep_row + 2))
