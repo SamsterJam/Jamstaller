@@ -185,12 +185,13 @@ execute_install_steps() {
 
         printf '%b' "$line"
 
-        # Calculate how much space we need to fill to clear old text
-        # We're at step_col (box_col + 3), we printed [X] (4 chars with space) + name
-        # We need to fill to just before the border
-        local content_width=$((4 + ${#name}))  # [X] + space + name
-        local available_width=$((step_right_col - step_col - 1))  # -1 to leave room for border
-        local padding=$((available_width - content_width))
+        # Calculate how much space to fill to clear old text without touching border
+        # After printing, cursor is at: step_col + 4 + ${#name}
+        # Border is at: step_right_col
+        # We want to stop at least 2 positions before border for safety
+        local chars_printed=$((4 + ${#name}))
+        local space_to_border=$((step_right_col - step_col - 2))
+        local padding=$((space_to_border - chars_printed))
 
         if [ $padding -gt 0 ]; then
             repeat_char ' ' "$padding"
