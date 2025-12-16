@@ -129,8 +129,9 @@ error_handler() {
     exit 1
 }
 
-# Set up error trap
-trap error_handler ERR
+# Error trap disabled to prevent interfering with TUI operations
+# The error_handler function is available but not automatically triggered
+# trap error_handler ERR
 
 # Run main
 main "$@"

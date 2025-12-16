@@ -4,7 +4,7 @@
 # Downloads and initializes the Jamstaller installation system
 #
 
-set -e
+# Note: Not using 'set -e' to prevent premature exit during TUI interaction
 
 # Configuration
 REPO_URL="https://raw.githubusercontent.com/SamsterJam/Jamstaller/main"
