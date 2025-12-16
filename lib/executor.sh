@@ -134,6 +134,9 @@ execute_install_steps() {
     repeat_char '─' "$inner_width"
     printf '┤'
 
+    # Force flush to ensure box is fully rendered
+    sync 2>/dev/null || true
+
     # Step list starts here
     local step_list_row=$((sep_row + 2))
     local step_col=$((box_col + 3))
@@ -148,6 +151,9 @@ execute_install_steps() {
         local spinner_char=$3
         local row=$((step_list_row + idx))
         local name="${step_names[$idx]}"
+
+        # Recalculate right column position to ensure it's accessible
+        local step_right_col=$((box_col + box_width - 1))
 
         # Calculate max width for step text (leave room for border and padding)
         local max_text_width=$((box_width - 8))  # 3 for left padding + 4 for [X] + 1 for right padding
@@ -179,20 +185,30 @@ execute_install_steps() {
 
         printf '%b' "$line"
 
-        # Pad with spaces to clear old text without erasing right border
-        local text_len=$((4 + ${#name}))  # 4 for [X]
-        local padding=$((max_text_width - ${#name}))
+        # Calculate how much space we need to fill before the border
+        # We're at step_col (box_col + 3), we printed [X] (4 chars with space) + name
+        # We need to fill to just before the border at step_right_col
+        local content_width=$((4 + ${#name}))  # [X] + space + name
+        local available_width=$((step_right_col - step_col - 1))  # -1 to leave room for border
+        local padding=$((available_width - content_width))
+
         if [ $padding -gt 0 ]; then
             repeat_char ' ' "$padding"
         fi
 
         # Redraw right border to ensure it's visible
-        printf '\033[%d;%dH│' "$row" "$right_col"
+        printf '\033[%d;%dH│' "$row" "$step_right_col"
     }
 
     # Initial display of all steps as pending
     for ((i=0; i<total_steps; i++)); do
         update_step_display $i 0 ""
+    done
+
+    # Redraw the entire right border to ensure it's visible
+    for ((i=0; i<total_steps; i++)); do
+        local border_row=$((step_list_row + i))
+        printf '\033[%d;%dH│' "$border_row" "$right_col"
     done
 
     # Execute each step
