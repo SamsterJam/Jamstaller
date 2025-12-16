@@ -1,11 +1,7 @@
 #!/bin/sh
 
-# Set script directory if not already set
-if [ -z "$SCRIPT_DIR" ]; then
-    SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-fi
-
 # TUI Installer Function
+# Note: Expects $SCRIPT_DIR to be set by the caller
 installer_tui() {
     # Parse arguments
     [ "$#" -lt 2 ] && return 1
@@ -1074,18 +1070,3 @@ echo -e "
 \e]PE56b6c2
 \e]PFffffff
 " && clear
-
-# Only run if executed directly (not sourced)
-if [ "${BASH_SOURCE[0]}" = "${0}" ] || [ -z "${BASH_SOURCE[0]}" ]; then
-    installer_tui "Jamstaller" \
-      "Install Location" \
-      "System Setup" \
-      "User Setup"
-
-    # Handle result
-    if [ $? -eq 0 ]; then
-        echo "Installation started!"
-    else
-        echo "Installation cancelled."
-    fi
-fi

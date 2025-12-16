@@ -1044,9 +1044,3 @@ EOF
     # Start with hostname screen
     hostname_screen
 }
-
-# Only run if executed directly (not sourced)
-if [ "${BASH_SOURCE[0]}" = "${0}" ] || [ -z "${BASH_SOURCE[0]}" ]; then
-    system_setup_tui
-    exit $?
-fi
