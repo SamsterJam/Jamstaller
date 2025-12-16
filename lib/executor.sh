@@ -185,9 +185,9 @@ execute_install_steps() {
 
         printf '%b' "$line"
 
-        # Calculate how much space we need to fill before the border
+        # Calculate how much space we need to fill to clear old text
         # We're at step_col (box_col + 3), we printed [X] (4 chars with space) + name
-        # We need to fill to just before the border at step_right_col
+        # We need to fill to just before the border
         local content_width=$((4 + ${#name}))  # [X] + space + name
         local available_width=$((step_right_col - step_col - 1))  # -1 to leave room for border
         local padding=$((available_width - content_width))
@@ -195,9 +195,6 @@ execute_install_steps() {
         if [ $padding -gt 0 ]; then
             repeat_char ' ' "$padding"
         fi
-
-        # Redraw right border to ensure it's visible
-        printf '\033[%d;%dH│' "$row" "$step_right_col"
     }
 
     # Initial display of all steps as pending
