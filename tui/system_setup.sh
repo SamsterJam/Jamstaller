@@ -81,8 +81,6 @@ detect_timezone() {
 cleanup() {
     printf '\033[?25h\033[?1049l'
     stty echo icanon
-    clear
-    exit "${1:-0}"
 }
 
 # Ctrl+C handler
