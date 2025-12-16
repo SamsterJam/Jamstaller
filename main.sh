@@ -4,8 +4,9 @@
 # Coordinates the installation process
 #
 
-set -e
-set -o pipefail
+# Note: We don't use 'set -e' here because the TUI scripts
+# may return non-zero exit codes during normal operation.
+# Critical errors are handled explicitly via the error trap.
 
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
