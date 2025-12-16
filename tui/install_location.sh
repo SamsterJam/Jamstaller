@@ -880,6 +880,8 @@ EOF
     device_selection_screen
 }
 
-# Run install location TUI
-install_location_tui
-exit $?
+# Only run if executed directly (not sourced)
+if [ "${BASH_SOURCE[0]}" = "${0}" ] || [ -z "${BASH_SOURCE[0]}" ]; then
+    install_location_tui
+    exit $?
+fi

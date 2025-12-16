@@ -909,6 +909,8 @@ EOF
     username_screen
 }
 
-# Run user setup TUI
-user_setup_tui
-exit $?
+# Only run if executed directly (not sourced)
+if [ "${BASH_SOURCE[0]}" = "${0}" ] || [ -z "${BASH_SOURCE[0]}" ]; then
+    user_setup_tui
+    exit $?
+fi
