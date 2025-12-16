@@ -105,6 +105,10 @@ handle_sigint() {
 
 # Main TUI
 install_location_tui() {
+    # DEBUG: Function called
+    echo "DEBUG: install_location_tui called" >> /tmp/jamstaller_debug.log
+    sleep 2
+
     # Get terminal dimensions
     if command -v tput >/dev/null 2>&1; then
         term_rows=$(tput lines)
