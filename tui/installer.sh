@@ -1,5 +1,10 @@
 #!/bin/sh
 
+# Set script directory if not already set
+if [ -z "$SCRIPT_DIR" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+fi
+
 # TUI Installer Function
 installer_tui() {
     # Parse arguments
@@ -948,8 +953,7 @@ installer_tui() {
                             draw_stage "$selected" 1
                             draw_buttons 0 1
                         else
-                            # User confirmed - run installation
-                            run_installation
+                            # User confirmed - return success to main.sh to start installation
                             cleanup 0
                             return 0
                         fi
@@ -965,7 +969,7 @@ installer_tui() {
                         trap - INT
 
                         # Run install location module
-                        ./install_location.sh
+                        "$SCRIPT_DIR/tui/install_location.sh"
                         location_result=$?
 
                         # Re-enable main script's signal handler and reset counter
@@ -991,7 +995,7 @@ installer_tui() {
                         trap - INT
 
                         # Run system setup module
-                        ./system_setup.sh
+                        "$SCRIPT_DIR/tui/system_setup.sh"
                         system_result=$?
 
                         # Re-enable main script's signal handler and reset counter
@@ -1017,7 +1021,7 @@ installer_tui() {
                         trap - INT
 
                         # Run user setup module
-                        ./user_setup.sh
+                        "$SCRIPT_DIR/tui/user_setup.sh"
                         user_result=$?
 
                         # Re-enable main script's signal handler and reset counter
@@ -1071,14 +1075,17 @@ echo -e "
 \e]PFffffff
 " && clear
 
-installer_tui "Jamstaller" \
-  "Install Location" \
-  "System Setup" \
-  "User Setup" 
+# Only run if executed directly (not sourced)
+if [ "${BASH_SOURCE[0]}" = "${0}" ] || [ -z "${BASH_SOURCE[0]}" ]; then
+    installer_tui "Jamstaller" \
+      "Install Location" \
+      "System Setup" \
+      "User Setup"
 
-# Handle result
-if [ $? -eq 0 ]; then
-    echo "Installation started!"
-else
-    echo "Installation cancelled."
+    # Handle result
+    if [ $? -eq 0 ]; then
+        echo "Installation started!"
+    else
+        echo "Installation cancelled."
+    fi
 fi

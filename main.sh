@@ -25,30 +25,22 @@ source "$SCRIPT_DIR/tui/user_setup.sh"
 # Main installation flow
 main() {
     clear
-    log_header "Welcome to Jamstaller"
 
-    # Step 1: Gather installation location
-    log_info "Step 1: Select installation location"
-    # TODO: Call your install_location TUI function here
-    # For now, we'll skip to system setup
+    # Run the TUI to gather all configuration
+    installer_tui "Jamstaller" \
+        "Install Location" \
+        "System Setup" \
+        "User Setup"
 
-    # Step 2: Gather system configuration
-    log_info "Step 2: Configure system settings"
-    # TODO: Call your system_setup TUI function here
+    tui_result=$?
 
-    # Step 3: Gather user configuration
-    log_info "Step 3: Configure user account"
-    # TODO: Call your user_setup TUI function here
-
-    # Step 4: Show summary and confirm
-    show_installation_summary
-
-    if ! confirm_installation; then
+    # Check if user cancelled
+    if [ $tui_result -ne 0 ]; then
         log_error "Installation cancelled by user"
         exit 0
     fi
 
-    # Step 5: Execute installation steps
+    # TUI completed successfully, proceed with installation
     log_header "Beginning Installation"
     execute_install_steps "$SCRIPT_DIR/steps"
 
