@@ -205,12 +205,6 @@ execute_install_steps() {
         update_step_display $i 0 ""
     done
 
-    # Redraw the entire right border to ensure it's visible
-    for ((i=0; i<total_steps; i++)); do
-        local border_row=$((step_list_row + i))
-        printf '\033[%d;%dH│' "$border_row" "$right_col"
-    done
-
     # Execute each step
     for ((current_step=0; current_step<total_steps; current_step++)); do
         local step_file="${step_files[$current_step]}"
