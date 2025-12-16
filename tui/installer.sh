@@ -964,8 +964,8 @@ installer_tui() {
                         # Temporarily disable main script's signal handler
                         trap - INT
 
-                        # Run install location module
-                        "$SCRIPT_DIR/tui/install_location.sh"
+                        # Run install location module function
+                        install_location_tui
                         location_result=$?
 
                         # Re-enable main script's signal handler and reset counter
@@ -990,8 +990,8 @@ installer_tui() {
                         # Temporarily disable main script's signal handler
                         trap - INT
 
-                        # Run system setup module
-                        "$SCRIPT_DIR/tui/system_setup.sh"
+                        # Run system setup module function
+                        system_setup_tui
                         system_result=$?
 
                         # Re-enable main script's signal handler and reset counter
@@ -1016,8 +1016,8 @@ installer_tui() {
                         # Temporarily disable main script's signal handler
                         trap - INT
 
-                        # Run user setup module
-                        "$SCRIPT_DIR/tui/user_setup.sh"
+                        # Run user setup module function
+                        user_setup_tui
                         user_result=$?
 
                         # Re-enable main script's signal handler and reset counter
