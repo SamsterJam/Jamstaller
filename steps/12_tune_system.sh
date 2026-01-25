@@ -1,7 +1,7 @@
 #!/bin/bash
 # CRITICAL=no
-# DESCRIPTION=Finalizing installation
-# ONFAIL=Some finalization steps failed. System should still be bootable.
+# DESCRIPTION=Tuning system performance
+# ONFAIL=Some system tuning failed. System should still be bootable.
 
 set -e
 
@@ -24,6 +24,6 @@ arch-chroot "$MOUNT_POINT" sed -i "s/^COMPRESSXZ=(xz -c -z -)/COMPRESSXZ=(xz -c 
 log_info "Optimizing disk I/O for SSD..."
 echo "vm.swappiness=10" >> "$MOUNT_POINT/etc/sysctl.d/99-sysctl.conf"
 
-log_success "Installation finalized successfully"
+log_success "System tuning completed successfully"
 
 exit 0

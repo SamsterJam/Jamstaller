@@ -4,7 +4,7 @@
 # Coordinates the installation process
 #
 
-VERSION="0.8.0"
+VERSION="0.9.0"
 export VERSION
 
 # Get the directory where this script is located
