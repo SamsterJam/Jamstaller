@@ -51,11 +51,16 @@ copy_config "$DOTFILES_DIR/alacritty" "$USER_HOME/.config/alacritty" "yes" || lo
 copy_config "$DOTFILES_DIR/dunst" "$USER_HOME/.config/dunst" "yes" || log_warning "Failed to copy dunst config"
 copy_config "$DOTFILES_DIR/fastfetch" "$USER_HOME/.config/fastfetch" "yes" || log_warning "Failed to copy fastfetch config"
 copy_config "$DOTFILES_DIR/Thunar" "$USER_HOME/.config/Thunar" "yes" || log_warning "Failed to copy Thunar config"
+copy_config "$DOTFILES_DIR/rofi" "$USER_HOME/.config/rofi" "yes" || log_warning "Failed to copy rofi config"
 
 # Individual files
 log_info "Copying individual config files..."
 copy_config "$DOTFILES_DIR/.nanorc" "$USER_HOME/.nanorc" "yes" || log_warning "Failed to copy .nanorc"
 copy_config "$DOTFILES_DIR/.gtkrc-2.0" "$USER_HOME/.gtkrc-2.0" "yes" || log_warning "Failed to copy .gtkrc-2.0"
+copy_config "$DOTFILES_DIR/.wallpaper" "$USER_HOME/.wallpaper" "yes" || log_warning "Failed to copy .wallpaper"
+
+# Make .wallpaper executable
+arch-chroot "$MOUNT_POINT" su - "$USERNAME" -c "chmod +x '$USER_HOME/.wallpaper'" || log_warning "Failed to make .wallpaper executable"
 
 # Discord fix
 arch-chroot "$MOUNT_POINT" su - "$USERNAME" -c "mkdir -p '$USER_HOME/.config/discord'"
@@ -112,6 +117,9 @@ EOFZSH" || log_warning "Failed to add custom aliases"
 # Create XDG user directories
 log_info "Creating user directories..."
 arch-chroot "$MOUNT_POINT" su - "$USERNAME" -c "xdg-user-dirs-update" || log_warning "Failed to create user directories"
+
+# Generate Color Palette
+arch-chroot "$MOUNT_POINT" su - "$USERNAME" -c "wal -n -s -t -e -i $USER_HOME/Pictures/Wallpapers/GlacierMountains-Kurt-Cotoaga.jpg"
 
 # Cleanup unwanted directories and files
 log_info "Cleaning up unwanted files..."
