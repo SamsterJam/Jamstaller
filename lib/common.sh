@@ -27,8 +27,9 @@ export HOSTNAME TIMEZONE USERNAME USER_PASSWORD DEVICE EFI_PARTITION ROOT_PARTIT
 
 # Paths
 : "${MOUNT_POINT:=/mnt}"
-: "${LOG_FILE:=/var/log/jamstaller-install.log}"
-export MOUNT_POINT LOG_FILE
+: "${LOG_FILE:=/var/log/jamstaller.log}"              # Main Jamstaller log
+: "${VERBOSE_LOG:=/var/log/jamstaller-verbose.log}"   # Verbose step output
+export MOUNT_POINT LOG_FILE VERBOSE_LOG
 
 # Logging functions
 log_info() {

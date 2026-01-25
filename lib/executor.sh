@@ -214,10 +214,16 @@ execute_install_steps() {
         local step_output=$(mktemp)
         local step_pid_file=$(mktemp)
 
-        # Run step in background
+        # Run step in background, logging to verbose log
         (
-            bash "$step_file" >> "$LOG_FILE" 2>&1
-            echo $? > "$step_pid_file"
+            echo "========================================" >> "$VERBOSE_LOG"
+            echo "Step: $step_name" >> "$VERBOSE_LOG"
+            echo "Time: $(date)" >> "$VERBOSE_LOG"
+            echo "========================================" >> "$VERBOSE_LOG"
+            bash "$step_file" >> "$VERBOSE_LOG" 2>&1
+            exit_code=$?
+            echo "" >> "$VERBOSE_LOG"
+            echo $exit_code > "$step_pid_file"
         ) &
         local step_pid=$!
 
@@ -248,8 +254,8 @@ execute_install_steps() {
             if [[ "$is_critical" == "yes" ]]; then
                 # Show error message at bottom of box
                 local error_row=$((box_row + box_height - 1))
-                printf '\033[%d;%dH\033[31m Critical step failed! Check log: %s\033[0m' \
-                    "$error_row" "$((box_col + 2))" "$LOG_FILE"
+                printf '\033[%d;%dH\033[31m Critical step failed! Check: %s\033[0m' \
+                    "$error_row" "$((box_col + 2))" "$VERBOSE_LOG"
 
                 # Wait a moment for user to see the error
                 sleep 3

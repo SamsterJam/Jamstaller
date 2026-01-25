@@ -9,7 +9,7 @@
 # Configuration
 REPO_URL="https://raw.githubusercontent.com/SamsterJam/Jamstaller/main"
 WORK_DIR="/tmp/jamstaller"
-LOG_FILE="/var/log/jamstaller-bootstrap.log"
+LOG_FILE="/var/log/jamstaller.log"
 
 # Colors
 RED='\033[0;31m'

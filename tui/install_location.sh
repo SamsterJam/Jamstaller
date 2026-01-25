@@ -862,18 +862,12 @@ EOF
                 else
                     # Confirm - save configuration and exit
                     # Save to temp file for main installer to read
-                    # Use fixed filename instead of $$ to ensure main.sh can find it
                     config_file="/tmp/jamstaller_install_config.conf"
                     cat > "$config_file" <<EOF
 DEVICE=$device
 INSTALL_MODE=$mode
 INSTALL_PARTITION=/dev/$partition
 EOF
-                    # Debug: Log what was written
-                    echo "[DEBUG] Created config file: $config_file" >> /tmp/jamstaller_debug.log
-                    echo "[DEBUG] Contents:" >> /tmp/jamstaller_debug.log
-                    cat "$config_file" >> /tmp/jamstaller_debug.log
-                    echo "[DEBUG] device=$device, mode=$mode, partition=$partition" >> /tmp/jamstaller_debug.log
                     cleanup 1
                     return 1
                 fi

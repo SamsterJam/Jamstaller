@@ -4,7 +4,7 @@
 # Coordinates the installation process
 #
 
-VERSION="0.7.1"
+VERSION="0.7.2"
 export VERSION
 
 # Note: We don't use 'set -e' here because the TUI scripts
@@ -29,8 +29,12 @@ source "$SCRIPT_DIR/tui/user_setup.sh"
 main() {
     clear
 
-    echo "Jamstaller v${VERSION}" > /tmp/jamstaller_version.log
-    echo "[INFO] Starting Jamstaller v${VERSION}" >> /tmp/jamstaller_debug.log
+    # Initialize logging
+    echo "========================================" > "$LOG_FILE"
+    echo "Jamstaller v${VERSION}" >> "$LOG_FILE"
+    echo "Started: $(date)" >> "$LOG_FILE"
+    echo "========================================" >> "$LOG_FILE"
+    echo "" >> "$LOG_FILE"
 
     # Run the TUI to gather all configuration
     installer_tui "Jamstaller" \
@@ -49,41 +53,30 @@ main() {
     # Load configuration from TUI modules
     log_info "Loading configuration..."
 
-    # Debug: List all files in /tmp matching pattern
-    echo "[DEBUG] Files in /tmp matching pattern:" >> /tmp/jamstaller_debug.log
-    ls -la /tmp/jamstaller_*_config.conf >> /tmp/jamstaller_debug.log 2>&1
-
     # Source all config files created by TUI modules
     config_count=0
     for config_file in /tmp/jamstaller_*_config.conf; do
         if [ -f "$config_file" ]; then
             log_info "Loading config from: $config_file"
-            echo "[DEBUG] Sourcing: $config_file" >> /tmp/jamstaller_debug.log
-            echo "[DEBUG] Contents before source:" >> /tmp/jamstaller_debug.log
-            cat "$config_file" >> /tmp/jamstaller_debug.log 2>&1
             source "$config_file"
             config_count=$((config_count + 1))
-            echo "[DEBUG] After sourcing - DEVICE=$DEVICE, HOSTNAME=$HOSTNAME, USERNAME=$USERNAME" >> /tmp/jamstaller_debug.log
             rm -f "$config_file"  # Clean up temp files
         fi
     done
 
     if [ "$config_count" -eq 0 ]; then
         log_warning "No configuration files found in /tmp"
-        log_info "Looking for files matching: /tmp/jamstaller_*_config.conf"
-        echo "[DEBUG] No config files found!" >> /tmp/jamstaller_debug.log
+        log_error "Installation cannot proceed without configuration"
+        exit 1
     else
         log_info "Loaded $config_count configuration file(s)"
     fi
 
     # Validate critical configuration
-    echo "[DEBUG] Final variables: DEVICE='$DEVICE', HOSTNAME='$HOSTNAME', USERNAME='$USERNAME'" >> /tmp/jamstaller_debug.log
-
     if [ -z "$DEVICE" ]; then
         log_error "DEVICE variable is not set. Installation cannot proceed."
         log_error "This indicates a configuration error. Please restart the installer."
-        log_error "Check /tmp/jamstaller_debug.log for debugging information"
-        cat /tmp/jamstaller_debug.log
+        log_error "Check $LOG_FILE for details"
         exit 1
     fi
 
@@ -121,9 +114,7 @@ main() {
     export LOCALE
     export MOUNT_POINT
 
-    # Debug: Verify exports before running steps
-    echo "[DEBUG] Before execute_install_steps - exported vars:" >> /tmp/jamstaller_debug.log
-    export | grep -E "DEVICE|HOSTNAME|USERNAME" >> /tmp/jamstaller_debug.log
+    log_info "Configuration loaded: DEVICE=/dev/$DEVICE, HOSTNAME=$HOSTNAME, USERNAME=$USERNAME"
 
     # User has already confirmed in TUI, proceed directly to installation
     execute_install_steps "$SCRIPT_DIR/steps"
@@ -136,6 +127,10 @@ main() {
     echo ""
     echo -e "${YELLOW}You can now reboot into your new system.${NC}"
     echo -e "${YELLOW}Run: reboot${NC}"
+    echo ""
+    echo -e "${BLUE}Logs saved to:${NC}"
+    echo -e "  ${BLUE}Main log:${NC}    $LOG_FILE"
+    echo -e "  ${BLUE}Verbose log:${NC} $VERBOSE_LOG"
     echo ""
 }
 
