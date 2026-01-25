@@ -9,33 +9,27 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$SCRIPT_DIR/lib/common.sh"
 
-# Use packagelist downloaded in step 15 (or download if missing)
-PACKAGELIST="/tmp/jamstaller_packagelist"
+# Use packagelist downloaded during bootstrap
+PACKAGELIST="$SCRIPT_DIR/../packagelist"
 
 if [ ! -f "$PACKAGELIST" ]; then
-    log_info "Package list not found, downloading from GitHub..."
-    PACKAGELIST_URL="https://raw.githubusercontent.com/SamsterJam/DotFiles/main/packagelist"
-
-    if ! curl -fsSL "$PACKAGELIST_URL" -o "$PACKAGELIST"; then
-        log_error "Failed to download package list from: $PACKAGELIST_URL"
-        log_error "Check internet connection"
-        exit 1
-    fi
+    log_error "Package list not found at: $PACKAGELIST"
+    log_error "This should have been downloaded during bootstrap"
+    exit 1
 fi
 
-# Parse AUR_PACKAGES from packagelist
-log_info "Parsing AUR package list..."
-# Extract package names from the AUR_PACKAGES array
-AUR_PKGS=($(sed -n '/^AUR_PACKAGES=(/,/^)/p' "$PACKAGELIST" | grep -v '^AUR_PACKAGES=(' | grep -v '^)' | grep -v '^#' | awk '{print $1}' | grep -v '^$'))
+# Source packagelist to load arrays
+log_info "Loading AUR package list..."
+source "$PACKAGELIST"
 
-TOTAL_AUR=${#AUR_PKGS[@]}
+TOTAL_AUR=${#AUR_PACKAGES[@]}
 log_info "Found $TOTAL_AUR AUR packages to install"
 
 declare -a FAILED_AUR=()
 
 # AUR packages ALWAYS install one-by-one (they're fragile)
 current=0
-for pkg in "${AUR_PKGS[@]}"; do
+for pkg in "${AUR_PACKAGES[@]}"; do
     current=$((current + 1))
     log_info "[$current/$TOTAL_AUR] Building AUR package: $pkg..."
 

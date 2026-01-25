@@ -1,7 +1,7 @@
 #!/bin/bash
-# CRITICAL=no
+# CRITICAL=yes
 # DESCRIPTION=Installing desktop packages
-# ONFAIL=Some packages failed to install. Check logs for details.
+# ONFAIL=Packages failed to install. Check logs for details.
 
 set -e
 
@@ -9,29 +9,21 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$SCRIPT_DIR/lib/common.sh"
 
-# Download packagelist from DotFiles repository
-PACKAGELIST_URL="https://raw.githubusercontent.com/SamsterJam/DotFiles/main/packagelist"
-PACKAGELIST="/tmp/jamstaller_packagelist"
-
-log_info "Downloading package list from GitHub..."
-if ! curl -fsSL "$PACKAGELIST_URL" -o "$PACKAGELIST"; then
-    log_error "Failed to download package list from: $PACKAGELIST_URL"
-    log_error "Check internet connection"
-    exit 1
-fi
+# Use packagelist downloaded during bootstrap
+PACKAGELIST="$SCRIPT_DIR/packagelist"
 
 if [ ! -f "$PACKAGELIST" ]; then
-    log_error "Package list download failed"
+    log_error "Package list not found at: $PACKAGELIST"
+    log_error "This should have been downloaded during bootstrap"
     exit 1
 fi
 
-# Parse PACMAN_PACKAGES from packagelist
-log_info "Parsing package list..."
-# Extract package names from the PACMAN_PACKAGES array
-PACKAGES=($(sed -n '/^PACMAN_PACKAGES=(/,/^)/p' "$PACKAGELIST" | grep -v '^PACMAN_PACKAGES=(' | grep -v '^)' | grep -v '^#' | awk '{print $1}' | grep -v '^$'))
+# Source packagelist to load arrays
+log_info "Loading package list..."
+source "$PACKAGELIST"
 
 # Count total packages
-TOTAL_PKGS=${#PACKAGES[@]}
+TOTAL_PKGS=${#PACMAN_PACKAGES[@]}
 log_info "Found $TOTAL_PKGS packages to install"
 
 # Failed packages tracking
@@ -39,14 +31,14 @@ declare -a FAILED_PACKAGES=()
 
 # STRATEGY 1: Try bulk installation first
 log_info "Attempting bulk installation of all packages..."
-if arch-chroot "$MOUNT_POINT" pacman -S --noconfirm --needed "${PACKAGES[@]}" >> "$VERBOSE_LOG" 2>&1; then
+if arch-chroot "$MOUNT_POINT" pacman -S --noconfirm --needed "${PACMAN_PACKAGES[@]}" >> "$VERBOSE_LOG" 2>&1; then
     log_success "All packages installed successfully via bulk install"
 else
     log_warning "Bulk installation failed, falling back to individual installation..."
 
     # STRATEGY 2: Install one-by-one
-    local current=0
-    for pkg in "${PACKAGES[@]}"; do
+    current=0
+    for pkg in "${PACMAN_PACKAGES[@]}"; do
         current=$((current + 1))
         log_info "[$current/$TOTAL_PKGS] Installing $pkg..."
 

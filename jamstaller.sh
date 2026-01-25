@@ -89,6 +89,13 @@ while IFS= read -r file; do
     fi
 done < "$WORK_DIR/MANIFEST"
 
+# Download packagelist from DotFiles repository
+echo -e "${BLUE}Downloading package list from DotFiles...${NC}"
+if ! download_file "https://raw.githubusercontent.com/SamsterJam/DotFiles/main/packagelist" "$WORK_DIR/packagelist"; then
+    echo -e "${RED}Failed to download packagelist. Installation cannot continue.${NC}"
+    exit 1
+fi
+
 echo -e "${GREEN}All components downloaded successfully!${NC}"
 echo ""
 
