@@ -481,7 +481,8 @@ installer_tui() {
         content_row=$((content_row + 2))
         printf '\033[%d;%dH\033[1mInstall Location:\033[0m' "$content_row" "$content_col"
         content_row=$((content_row + 1))
-        printf '\033[%d;%dH  Device: %s' "$content_row" "$content_col" "${INSTALL_DEVICE:-Unknown}"
+        printf '\033[%d;%dH  Device: %s' "$content_row" "$content_col" "${DEVICE:+/dev/$DEVICE}"
+        [ -z "$DEVICE" ] && printf '\033[%d;%dH  Device: Unknown' "$content_row" "$content_col"
         content_row=$((content_row + 1))
         if [ "$INSTALL_MODE" = "full" ]; then
             printf '\033[%d;%dH  Mode: \033[1;31mFull disk (will erase all data)\033[0m' "$content_row" "$content_col"
@@ -495,12 +496,12 @@ installer_tui() {
         content_row=$((content_row + 2))
         printf '\033[%d;%dH\033[1mSystem Configuration:\033[0m' "$content_row" "$content_col"
         content_row=$((content_row + 1))
-        printf '\033[%d;%dH  Hostname: %s' "$content_row" "$content_col" "${SYSTEM_HOSTNAME:-Unknown}"
+        printf '\033[%d;%dH  Hostname: %s' "$content_row" "$content_col" "${HOSTNAME:-Unknown}"
         content_row=$((content_row + 1))
-        printf '\033[%d;%dH  Timezone: %s' "$content_row" "$content_col" "${SYSTEM_TIMEZONE:-Unknown}"
+        printf '\033[%d;%dH  Timezone: %s' "$content_row" "$content_col" "${TIMEZONE:-Unknown}"
         content_row=$((content_row + 1))
-        if [ "$SYSTEM_SWAP" = "true" ]; then
-            printf '\033[%d;%dH  Swap: Enabled' "$content_row" "$content_col"
+        if [ -n "$SWAP_SIZE" ] && [ "$SWAP_SIZE" != "0" ]; then
+            printf '\033[%d;%dH  Swap: %s GB' "$content_row" "$content_col" "$SWAP_SIZE"
         else
             printf '\033[%d;%dH  Swap: Disabled' "$content_row" "$content_col"
         fi
@@ -509,7 +510,7 @@ installer_tui() {
         content_row=$((content_row + 2))
         printf '\033[%d;%dH\033[1mUser Account:\033[0m' "$content_row" "$content_col"
         content_row=$((content_row + 1))
-        printf '\033[%d;%dH  Username: %s' "$content_row" "$content_col" "${USER_USERNAME:-Unknown}"
+        printf '\033[%d;%dH  Username: %s' "$content_row" "$content_col" "${USERNAME:-Unknown}"
 
         # Buttons
         draw_review_buttons() {
@@ -585,7 +586,8 @@ installer_tui() {
 
         # Calculate dialog dimensions
         warning_line1="FINAL WARNING"
-        warning_line2="This will erase data on ${INSTALL_DEVICE:-the selected device}"
+        warning_line2="This will erase data on ${DEVICE:+/dev/$DEVICE}"
+        [ -z "$DEVICE" ] && warning_line2="This will erase data on the selected device"
         warning_line3="This action CANNOT be undone!"
         button_cancel="Cancel"
         button_confirm="Confirm & Install"

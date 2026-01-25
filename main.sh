@@ -44,12 +44,39 @@ main() {
     log_info "Loading configuration..."
 
     # Source all config files created by TUI modules
+    config_count=0
     for config_file in /tmp/jamstaller_*_config.*; do
         if [ -f "$config_file" ]; then
+            log_info "Loading config from: $config_file"
             source "$config_file"
+            config_count=$((config_count + 1))
             rm -f "$config_file"  # Clean up temp files
         fi
     done
+
+    if [ "$config_count" -eq 0 ]; then
+        log_warning "No configuration files found in /tmp"
+        log_info "Looking for files matching: /tmp/jamstaller_*_config.*"
+    else
+        log_info "Loaded $config_count configuration file(s)"
+    fi
+
+    # Validate critical configuration
+    if [ -z "$DEVICE" ]; then
+        log_error "DEVICE variable is not set. Installation cannot proceed."
+        log_error "This indicates a configuration error. Please restart the installer."
+        exit 1
+    fi
+
+    if [ -z "$HOSTNAME" ]; then
+        log_error "HOSTNAME variable is not set. Installation cannot proceed."
+        exit 1
+    fi
+
+    if [ -z "$USERNAME" ]; then
+        log_error "USERNAME variable is not set. Installation cannot proceed."
+        exit 1
+    fi
 
     # Calculate partition names based on device type
     if [[ $DEVICE == nvme* ]]; then
@@ -75,16 +102,7 @@ main() {
     export LOCALE
     export MOUNT_POINT
 
-    # Show installation summary before proceeding
-    show_installation_summary
-
-    # Confirm installation
-    if ! confirm_installation; then
-        log_error "Installation cancelled by user"
-        exit 0
-    fi
-
-    # TUI completed successfully, proceed with installation
+    # User has already confirmed in TUI, proceed directly to installation
     execute_install_steps "$SCRIPT_DIR/steps"
 
     # Cleanup
@@ -96,38 +114,6 @@ main() {
     echo -e "${YELLOW}You can now reboot into your new system.${NC}"
     echo -e "${YELLOW}Run: reboot${NC}"
     echo ""
-}
-
-# Show installation summary
-show_installation_summary() {
-    echo ""
-    echo -e "${YELLOW}═══════════════════════════════════════${NC}"
-    echo -e "${YELLOW}        Installation Summary${NC}"
-    echo -e "${YELLOW}═══════════════════════════════════════${NC}"
-    echo -e "${BLUE}Hostname:${NC}        $HOSTNAME"
-    echo -e "${BLUE}Timezone:${NC}        $TIMEZONE"
-    echo -e "${BLUE}Username:${NC}        $USERNAME"
-    echo -e "${BLUE}Device:${NC}          /dev/$DEVICE"
-    echo -e "${BLUE}EFI Partition:${NC}   $EFI_PARTITION"
-    echo -e "${BLUE}Root Partition:${NC}  $ROOT_PARTITION"
-    [ -n "$SWAP_SIZE" ] && [ "$SWAP_SIZE" -gt 0 ] && \
-        echo -e "${BLUE}Swap Size:${NC}       ${SWAP_SIZE}GB" || \
-        echo -e "${BLUE}Swap:${NC}            None"
-    echo -e "${YELLOW}═══════════════════════════════════════${NC}"
-    echo ""
-}
-
-# Confirm installation
-confirm_installation() {
-    echo -e "${YELLOW}WARNING: This will ERASE ALL DATA on /dev/$DEVICE${NC}"
-    echo ""
-    read -p "Are you sure you want to proceed? (yes/NO): " response
-
-    if [ "$response" = "yes" ]; then
-        return 0
-    else
-        return 1
-    fi
 }
 
 # Cleanup function

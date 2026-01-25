@@ -9,6 +9,21 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$SCRIPT_DIR/lib/common.sh"
 
+# Validate DEVICE variable
+if [ -z "$DEVICE" ]; then
+    log_error "DEVICE variable is empty or not set"
+    log_error "Expected format: DEVICE=sda (without /dev/ prefix)"
+    exit 1
+fi
+
+# Validate device exists
+if [ ! -b "/dev/$DEVICE" ]; then
+    log_error "Device /dev/$DEVICE does not exist or is not a block device"
+    log_error "Available devices:"
+    lsblk -ndo NAME,SIZE,TYPE | grep disk || echo "  No disks found"
+    exit 1
+fi
+
 log_info "Partitioning /dev/$DEVICE..."
 
 # Create GPT partition table
