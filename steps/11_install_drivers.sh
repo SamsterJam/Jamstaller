@@ -38,12 +38,15 @@ if [ "$nvidia_detected" = "yes" ]; then
 
     # Add NVIDIA modules to initramfs
     log_info "Adding NVIDIA modules to initramfs..."
-    arch-chroot "$MOUNT_POINT" sed -i 's/^MODULES=(/MODULES=(nvidia nvidia_modeset nvidia_uvm nvidia_drm /' /etc/mkinitcpio.conf
+    if grep -q '^MODULES=()' "$MOUNT_POINT/etc/mkinitcpio.conf"; then
+        arch-chroot "$MOUNT_POINT" sed -i 's/^MODULES=()/MODULES=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)/' /etc/mkinitcpio.conf
+    else
+        arch-chroot "$MOUNT_POINT" sed -i 's/^MODULES=(\(.*\))/MODULES=(nvidia nvidia_modeset nvidia_uvm nvidia_drm \1)/' /etc/mkinitcpio.conf
+    fi
     arch-chroot "$MOUNT_POINT" mkinitcpio -P
 
 elif [ "$intel_detected" = "yes" ]; then
-    log_info "Intel graphics detected, installing drivers..."
-    arch-chroot "$MOUNT_POINT" pacman -S --noconfirm xf86-video-intel
+    log_info "Intel graphics detected, using kernel modesetting driver (no additional driver needed)..."
 
 elif [ "$amd_detected" = "yes" ]; then
     log_info "AMD graphics detected, installing drivers..."

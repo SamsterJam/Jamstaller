@@ -25,7 +25,7 @@ log_info "Installing sudo..."
 arch-chroot "$MOUNT_POINT" pacman -S --noconfirm sudo
 
 log_info "Configuring sudo access for wheel group..."
-echo "%wheel ALL=(ALL:ALL) ALL" >> "$MOUNT_POINT/etc/sudoers"
+arch-chroot "$MOUNT_POINT" sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 
 log_success "User account created successfully"
 

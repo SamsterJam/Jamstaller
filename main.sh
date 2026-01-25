@@ -7,10 +7,6 @@
 VERSION="0.7.2"
 export VERSION
 
-# Note: We don't use 'set -e' here because the TUI scripts
-# may return non-zero exit codes during normal operation.
-# Critical errors are handled explicitly via the error trap.
-
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -166,10 +162,6 @@ error_handler() {
     log_error "Installation failed. Check logs for details."
     exit 1
 }
-
-# Error trap disabled to prevent interfering with TUI operations
-# The error_handler function is available but not automatically triggered
-# trap error_handler ERR
 
 # Run main
 main "$@"

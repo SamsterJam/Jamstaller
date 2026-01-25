@@ -13,7 +13,11 @@ log_info "Installing GRUB to EFI partition..."
 arch-chroot "$MOUNT_POINT" grub-install --target=x86_64-efi --bootloader-id=GRUB --efi-directory=/boot/efi
 
 log_info "Enabling os-prober in GRUB configuration..."
-arch-chroot "$MOUNT_POINT" sed -i 's/^#GRUB_DISABLE_OS_PROBER=false/GRUB_DISABLE_OS_PROBER=false/' /etc/default/grub
+if grep -q "^#GRUB_DISABLE_OS_PROBER" "$MOUNT_POINT/etc/default/grub"; then
+    arch-chroot "$MOUNT_POINT" sed -i 's/^#GRUB_DISABLE_OS_PROBER=false/GRUB_DISABLE_OS_PROBER=false/' /etc/default/grub
+else
+    echo "GRUB_DISABLE_OS_PROBER=false" >> "$MOUNT_POINT/etc/default/grub"
+fi
 
 log_info "Generating GRUB configuration..."
 arch-chroot "$MOUNT_POINT" grub-mkconfig -o /boot/grub/grub.cfg
