@@ -43,13 +43,21 @@ main() {
     # Load configuration from TUI modules
     log_info "Loading configuration..."
 
+    # Debug: List all files in /tmp matching pattern
+    echo "[DEBUG] Files in /tmp matching pattern:" >> /tmp/jamstaller_debug.log
+    ls -la /tmp/jamstaller_*_config.* >> /tmp/jamstaller_debug.log 2>&1
+
     # Source all config files created by TUI modules
     config_count=0
     for config_file in /tmp/jamstaller_*_config.*; do
         if [ -f "$config_file" ]; then
             log_info "Loading config from: $config_file"
+            echo "[DEBUG] Sourcing: $config_file" >> /tmp/jamstaller_debug.log
+            echo "[DEBUG] Contents before source:" >> /tmp/jamstaller_debug.log
+            cat "$config_file" >> /tmp/jamstaller_debug.log 2>&1
             source "$config_file"
             config_count=$((config_count + 1))
+            echo "[DEBUG] After sourcing - DEVICE=$DEVICE, HOSTNAME=$HOSTNAME, USERNAME=$USERNAME" >> /tmp/jamstaller_debug.log
             rm -f "$config_file"  # Clean up temp files
         fi
     done
@@ -57,14 +65,19 @@ main() {
     if [ "$config_count" -eq 0 ]; then
         log_warning "No configuration files found in /tmp"
         log_info "Looking for files matching: /tmp/jamstaller_*_config.*"
+        echo "[DEBUG] No config files found!" >> /tmp/jamstaller_debug.log
     else
         log_info "Loaded $config_count configuration file(s)"
     fi
 
     # Validate critical configuration
+    echo "[DEBUG] Final variables: DEVICE='$DEVICE', HOSTNAME='$HOSTNAME', USERNAME='$USERNAME'" >> /tmp/jamstaller_debug.log
+
     if [ -z "$DEVICE" ]; then
         log_error "DEVICE variable is not set. Installation cannot proceed."
         log_error "This indicates a configuration error. Please restart the installer."
+        log_error "Check /tmp/jamstaller_debug.log for debugging information"
+        cat /tmp/jamstaller_debug.log
         exit 1
     fi
 
