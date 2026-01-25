@@ -9,6 +9,15 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$SCRIPT_DIR/lib/common.sh"
 
+# Initialize keyring to fix signature verification issues
+log_info "Initializing Arch Linux keyring..."
+pacman-key --init
+pacman-key --populate archlinux
+
+# Update keyring to latest version
+log_info "Updating keyring..."
+pacman -Sy --noconfirm archlinux-keyring || log_warning "Failed to update keyring, continuing anyway..."
+
 # Optimize pacman.conf on the ISO before installing
 log_info "Optimizing pacman configuration on ISO..."
 sed -i 's/^#ParallelDownloads = 5/ParallelDownloads = 5/' /etc/pacman.conf

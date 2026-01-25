@@ -4,7 +4,7 @@
 # Coordinates the installation process
 #
 
-VERSION="0.7.0"
+VERSION="0.7.1"
 export VERSION
 
 # Note: We don't use 'set -e' here because the TUI scripts
