@@ -13,21 +13,17 @@ MDM_REPO="https://github.com/SamsterJam/MDM.git"
 BUILD_DIR="/tmp/mdm_build"
 
 log_info "Cloning MDM repository..."
-if ! arch-chroot "$MOUNT_POINT" bash -c "git clone '$MDM_REPO' '$BUILD_DIR'"; then
-    log_error "Failed to clone MDM repository"
-    exit 1
-fi
-
 log_info "Building MDM..."
-if ! arch-chroot "$MOUNT_POINT" bash -c "cd '$BUILD_DIR' && make"; then
-    log_error "MDM build failed"
-    arch-chroot "$MOUNT_POINT" rm -rf "$BUILD_DIR"
-    exit 1
-fi
-
 log_info "Installing MDM..."
-if ! arch-chroot "$MOUNT_POINT" bash -c "cd '$BUILD_DIR' && make install"; then
-    log_error "MDM installation failed"
+
+# Run all build steps in a single chroot session
+if ! arch-chroot "$MOUNT_POINT" bash -c "
+    git clone '$MDM_REPO' '$BUILD_DIR' && \
+    cd '$BUILD_DIR' && \
+    make && \
+    make install
+"; then
+    log_error "MDM build/installation failed"
     arch-chroot "$MOUNT_POINT" rm -rf "$BUILD_DIR"
     exit 1
 fi
