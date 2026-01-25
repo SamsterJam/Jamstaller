@@ -862,7 +862,8 @@ EOF
                 else
                     # Confirm - save configuration and exit
                     # Save to temp file for main installer to read
-                    config_file="/tmp/jamstaller_install_config.$$"
+                    # Use fixed filename instead of $$ to ensure main.sh can find it
+                    config_file="/tmp/jamstaller_install_config.conf"
                     cat > "$config_file" <<EOF
 DEVICE=$device
 INSTALL_MODE=$mode

@@ -4,7 +4,8 @@
 # Coordinates the installation process
 #
 
-VERSION="0.6.7"
+VERSION="0.6.8"
+export VERSION
 
 # Note: We don't use 'set -e' here because the TUI scripts
 # may return non-zero exit codes during normal operation.
@@ -50,11 +51,11 @@ main() {
 
     # Debug: List all files in /tmp matching pattern
     echo "[DEBUG] Files in /tmp matching pattern:" >> /tmp/jamstaller_debug.log
-    ls -la /tmp/jamstaller_*_config.* >> /tmp/jamstaller_debug.log 2>&1
+    ls -la /tmp/jamstaller_*_config.conf >> /tmp/jamstaller_debug.log 2>&1
 
     # Source all config files created by TUI modules
     config_count=0
-    for config_file in /tmp/jamstaller_*_config.*; do
+    for config_file in /tmp/jamstaller_*_config.conf; do
         if [ -f "$config_file" ]; then
             log_info "Loading config from: $config_file"
             echo "[DEBUG] Sourcing: $config_file" >> /tmp/jamstaller_debug.log
@@ -69,7 +70,7 @@ main() {
 
     if [ "$config_count" -eq 0 ]; then
         log_warning "No configuration files found in /tmp"
-        log_info "Looking for files matching: /tmp/jamstaller_*_config.*"
+        log_info "Looking for files matching: /tmp/jamstaller_*_config.conf"
         echo "[DEBUG] No config files found!" >> /tmp/jamstaller_debug.log
     else
         log_info "Loaded $config_count configuration file(s)"

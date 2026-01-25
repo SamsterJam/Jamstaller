@@ -1027,7 +1027,7 @@ EOF
                     return $?
                 else
                     # Confirm - save configuration
-                    cat > /tmp/jamstaller_system_config.$$ <<EOF
+                    cat > /tmp/jamstaller_system_config.conf <<EOF
 HOSTNAME=$config_hostname
 TIMEZONE=$config_timezone
 SWAP_SIZE=$config_swap

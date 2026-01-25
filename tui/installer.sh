@@ -821,6 +821,13 @@ installer_tui() {
             draw_stage "$i" 0
             i=$((i + 1))
         done
+
+        # Draw version number below box
+        version_row=$((start_row + box_inner_height + border_width + 2))
+        version_text="v${VERSION:-unknown}"
+        version_col=$((start_col + (box_width - ${#version_text}) / 2))
+        printf '\033[%d;%dH\033[2m%s\033[0m' "$version_row" "$version_col" "$version_text"
+
         # Force output flush
         printf ''
     }
