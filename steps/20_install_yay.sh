@@ -28,10 +28,26 @@ if ! arch-chroot "$MOUNT_POINT" su - "$USERNAME" -c "git clone https://aur.archl
     exit 1
 fi
 
-# Build and install Yay (this may take a few minutes)
-log_info "Building and installing Yay..."
-if ! arch-chroot "$MOUNT_POINT" su - "$USERNAME" -c "cd '$BUILD_DIR/yay' && makepkg -si --noconfirm"; then
-    log_error "Yay build/install failed"
+# Build Yay (this may take a few minutes)
+log_info "Building Yay..."
+if ! arch-chroot "$MOUNT_POINT" su - "$USERNAME" -c "cd '$BUILD_DIR/yay' && makepkg -s --noconfirm"; then
+    log_error "Yay build failed"
+    arch-chroot "$MOUNT_POINT" rm -rf "$BUILD_DIR"
+    exit 1
+fi
+
+# Find the main yay package (exclude debug package)
+log_info "Installing Yay package..."
+YAY_PKG=$(arch-chroot "$MOUNT_POINT" find "$BUILD_DIR/yay" -name 'yay-[0-9]*.pkg.tar.zst' ! -name '*-debug-*.pkg.tar.zst' | head -1)
+if [ -z "$YAY_PKG" ]; then
+    log_error "Could not find built Yay package"
+    arch-chroot "$MOUNT_POINT" rm -rf "$BUILD_DIR"
+    exit 1
+fi
+
+# Install as root (no sudo needed in chroot)
+if ! arch-chroot "$MOUNT_POINT" pacman -U --noconfirm "$YAY_PKG"; then
+    log_error "Failed to install Yay package"
     arch-chroot "$MOUNT_POINT" rm -rf "$BUILD_DIR"
     exit 1
 fi
