@@ -4,6 +4,8 @@
 # Coordinates the installation process
 #
 
+VERSION="0.6.7"
+
 # Note: We don't use 'set -e' here because the TUI scripts
 # may return non-zero exit codes during normal operation.
 # Critical errors are handled explicitly via the error trap.
@@ -25,6 +27,9 @@ source "$SCRIPT_DIR/tui/user_setup.sh"
 # Main installation flow
 main() {
     clear
+
+    echo "Jamstaller v${VERSION}" > /tmp/jamstaller_version.log
+    echo "[INFO] Starting Jamstaller v${VERSION}" >> /tmp/jamstaller_debug.log
 
     # Run the TUI to gather all configuration
     installer_tui "Jamstaller" \
