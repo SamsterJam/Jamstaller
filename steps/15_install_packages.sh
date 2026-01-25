@@ -9,11 +9,19 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$SCRIPT_DIR/lib/common.sh"
 
-# Path to packagelist in DotFiles
-PACKAGELIST="$SCRIPT_DIR/DotFiles/packagelist"
+# Download packagelist from DotFiles repository
+PACKAGELIST_URL="https://raw.githubusercontent.com/SamsterJam/DotFiles/main/packagelist"
+PACKAGELIST="/tmp/jamstaller_packagelist"
+
+log_info "Downloading package list from GitHub..."
+if ! curl -fsSL "$PACKAGELIST_URL" -o "$PACKAGELIST"; then
+    log_error "Failed to download package list from: $PACKAGELIST_URL"
+    log_error "Check internet connection"
+    exit 1
+fi
 
 if [ ! -f "$PACKAGELIST" ]; then
-    log_error "Package list not found at: $PACKAGELIST"
+    log_error "Package list download failed"
     exit 1
 fi
 

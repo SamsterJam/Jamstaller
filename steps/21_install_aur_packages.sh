@@ -9,12 +9,18 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$SCRIPT_DIR/lib/common.sh"
 
-# Path to packagelist in DotFiles
-PACKAGELIST="$SCRIPT_DIR/DotFiles/packagelist"
+# Use packagelist downloaded in step 15 (or download if missing)
+PACKAGELIST="/tmp/jamstaller_packagelist"
 
 if [ ! -f "$PACKAGELIST" ]; then
-    log_error "Package list not found at: $PACKAGELIST"
-    exit 1
+    log_info "Package list not found, downloading from GitHub..."
+    PACKAGELIST_URL="https://raw.githubusercontent.com/SamsterJam/DotFiles/main/packagelist"
+
+    if ! curl -fsSL "$PACKAGELIST_URL" -o "$PACKAGELIST"; then
+        log_error "Failed to download package list from: $PACKAGELIST_URL"
+        log_error "Check internet connection"
+        exit 1
+    fi
 fi
 
 # Parse AUR_PACKAGES from packagelist
