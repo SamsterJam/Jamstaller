@@ -12,19 +12,23 @@ export BOLD_BLUE='\033[1;34m'
 export NC='\033[0m'
 
 # Global variables (will be set by TUI or config)
-export HOSTNAME=""
-export TIMEZONE=""
-export USERNAME=""
-export USER_PASSWORD=""
-export DEVICE=""
-export EFI_PARTITION=""
-export ROOT_PARTITION=""
-export SWAP_SIZE=0
-export LOCALE="en_US.UTF-8"
+# Only set defaults if not already set (avoid overwriting values from main.sh)
+: "${HOSTNAME:=}"
+: "${TIMEZONE:=}"
+: "${USERNAME:=}"
+: "${USER_PASSWORD:=}"
+: "${DEVICE:=}"
+: "${EFI_PARTITION:=}"
+: "${ROOT_PARTITION:=}"
+: "${SWAP_SIZE:=0}"
+: "${LOCALE:=en_US.UTF-8}"
+
+export HOSTNAME TIMEZONE USERNAME USER_PASSWORD DEVICE EFI_PARTITION ROOT_PARTITION SWAP_SIZE LOCALE
 
 # Paths
-export MOUNT_POINT="/mnt"
-export LOG_FILE="/var/log/jamstaller-install.log"
+: "${MOUNT_POINT:=/mnt}"
+: "${LOG_FILE:=/var/log/jamstaller-install.log}"
+export MOUNT_POINT LOG_FILE
 
 # Logging functions
 log_info() {
