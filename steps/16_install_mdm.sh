@@ -10,21 +10,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$SCRIPT_DIR/lib/common.sh"
 
 MDM_REPO="https://github.com/SamsterJam/MDM.git"
-BUILD_DIR="/tmp/mdm_build"
 
-log_info "Cloning MDM repository..."
-log_info "Building MDM..."
-log_info "Installing MDM..."
+log_info "Cloning, building, and installing MDM..."
 
-# Run all build steps in a single chroot session
-if ! arch-chroot "$MOUNT_POINT" bash -c "
-    git clone '$MDM_REPO' '$BUILD_DIR' && \
-    cd '$BUILD_DIR' && \
-    make && \
-    make install
-"; then
+# Run all build steps in a single chroot session using /tmp as working directory
+if ! arch-chroot "$MOUNT_POINT" /bin/bash <<'EOFMDM'
+set -e
+cd /tmp
+git clone https://github.com/SamsterJam/MDM.git mdm_build
+cd mdm_build
+make
+make install
+EOFMDM
+then
     log_error "MDM build/installation failed"
-    arch-chroot "$MOUNT_POINT" rm -rf "$BUILD_DIR"
+    arch-chroot "$MOUNT_POINT" rm -rf /tmp/mdm_build
     exit 1
 fi
 
