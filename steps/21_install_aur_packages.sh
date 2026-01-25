@@ -1,5 +1,5 @@
 #!/bin/bash
-# CRITICAL=no
+# CRITICAL=yes
 # DESCRIPTION=Installing AUR packages
 # ONFAIL=Some AUR packages failed. Check logs for details.
 
