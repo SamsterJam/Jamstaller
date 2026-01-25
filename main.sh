@@ -4,7 +4,7 @@
 # Coordinates the installation process
 #
 
-VERSION="0.6.8"
+VERSION="0.6.9"
 export VERSION
 
 # Note: We don't use 'set -e' here because the TUI scripts
@@ -120,6 +120,10 @@ main() {
     export SWAP_SIZE
     export LOCALE
     export MOUNT_POINT
+
+    # Debug: Verify exports before running steps
+    echo "[DEBUG] Before execute_install_steps - exported vars:" >> /tmp/jamstaller_debug.log
+    export | grep -E "DEVICE|HOSTNAME|USERNAME" >> /tmp/jamstaller_debug.log
 
     # User has already confirmed in TUI, proceed directly to installation
     execute_install_steps "$SCRIPT_DIR/steps"
