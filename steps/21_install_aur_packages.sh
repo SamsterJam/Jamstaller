@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$SCRIPT_DIR/lib/common.sh"
 
 # Use packagelist downloaded during bootstrap
-PACKAGELIST="$SCRIPT_DIR/../packagelist"
+PACKAGELIST="$SCRIPT_DIR/packagelist"
 
 if [ ! -f "$PACKAGELIST" ]; then
     log_error "Package list not found at: $PACKAGELIST"
