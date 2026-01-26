@@ -25,6 +25,11 @@ source "$PACKAGELIST"
 TOTAL_AUR=${#AUR_PACKAGES[@]}
 log_info "Found $TOTAL_AUR AUR packages to install"
 
+# Grant temporary passwordless sudo for AUR builds
+log_info "Configuring temporary passwordless sudo..."
+echo "$USERNAME ALL=(ALL) NOPASSWD: ALL" > "$MOUNT_POINT/etc/sudoers.d/temp_aur_install"
+chmod 440 "$MOUNT_POINT/etc/sudoers.d/temp_aur_install"
+
 declare -a FAILED_AUR=()
 
 # AUR packages ALWAYS install one-by-one (they're fragile)
@@ -40,6 +45,10 @@ for pkg in "${AUR_PACKAGES[@]}"; do
         log_warning "Failed to build: $pkg"
     fi
 done
+
+# Remove passwordless sudo
+log_info "Removing temporary passwordless sudo..."
+rm -f "$MOUNT_POINT/etc/sudoers.d/temp_aur_install"
 
 # Report results
 if [ ${#FAILED_AUR[@]} -eq 0 ]; then
