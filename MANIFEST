@@ -30,3 +30,4 @@ steps/20_install_yay.sh
 steps/21_install_aur_packages.sh
 steps/22_clone_dotfiles.sh
 steps/23_apply_dotfiles.sh
+steps/24_configure_grub_theme.sh
