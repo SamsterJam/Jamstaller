@@ -52,6 +52,7 @@ copy_config "$DOTFILES_DIR/dunst" "$USER_HOME/.config/dunst" "yes" || log_warnin
 copy_config "$DOTFILES_DIR/fastfetch" "$USER_HOME/.config/fastfetch" "yes" || log_warning "Failed to copy fastfetch config"
 copy_config "$DOTFILES_DIR/Thunar" "$USER_HOME/.config/Thunar" "yes" || log_warning "Failed to copy Thunar config"
 copy_config "$DOTFILES_DIR/rofi" "$USER_HOME/.config/rofi" "yes" || log_warning "Failed to copy rofi config"
+copy_config "$DOTFILES_DIR/wlogout" "$USER_HOME/.config/wlogout" "yes" || log_warning "Failed to copy wlogout config"
 
 # Individual files
 log_info "Copying individual config files..."
@@ -119,7 +120,7 @@ log_info "Creating user directories..."
 arch-chroot "$MOUNT_POINT" su - "$USERNAME" -c "xdg-user-dirs-update" || log_warning "Failed to create user directories"
 
 # Generate Color Palette
-arch-chroot "$MOUNT_POINT" su - "$USERNAME" -c "wal -n -s -t -e -i $USER_HOME/Pictures/Wallpapers/GlacierMountains-Kurt-Cotoaga.jpg"
+arch-chroot "$MOUNT_POINT" su - "$USERNAME" -c "wal -n -s -t -e -i $USER_HOME/Pictures/Wallpapers/GlacierMountains-Kurt-Cotoaga.jpg" || log_warning "Failed to create color palette"
 
 # Cleanup unwanted directories and files
 log_info "Cleaning up unwanted files..."
